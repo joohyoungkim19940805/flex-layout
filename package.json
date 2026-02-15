@@ -43,10 +43,30 @@
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
 		},
-		"./next": {
-			"types": "./dist/next.d.ts",
-			"import": "./dist/next.js",
-			"require": "./dist/next.cjs"
+		"./components": {
+			"types": "./dist/components.d.ts",
+			"import": "./dist/components.js",
+			"require": "./dist/components.cjs"
+		},
+		"./hooks": {
+			"types": "./dist/hooks.d.ts",
+			"import": "./dist/hooks.js",
+			"require": "./dist/hooks.cjs"
+		},
+		"./providers": {
+			"types": "./dist/providers.d.ts",
+			"import": "./dist/providers.js",
+			"require": "./dist/providers.cjs"
+		},
+		"./utils": {
+			"types": "./dist/utils.d.ts",
+			"import": "./dist/utils.js",
+			"require": "./dist/utils.cjs"
+		},
+		"./store": {
+			"types": "./dist/store.d.ts",
+			"import": "./dist/store.js",
+			"require": "./dist/store.cjs"
 		}
 	},
 	"files": [
