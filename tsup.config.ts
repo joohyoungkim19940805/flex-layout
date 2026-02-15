@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
 	entry: {
-		index: "src/flex-layout/index.ts",
+		index: "src/index.ts",
 		components: "src/flex-layout/components/index.ts",
 		hooks: "src/flex-layout/hooks/index.ts",
 		utils: "src/flex-layout/utils/index.ts",
@@ -15,7 +15,7 @@ export default defineConfig({
 	clean: true,
 	target: "es2020",
 	treeshake: true,
-
+	splitting: false,
 	//  React는 반드시 외부로
 	external: ["react", "react-dom", "react/jsx-runtime", "rxjs"],
 });
