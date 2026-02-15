@@ -1,19 +1,8 @@
-// src/flex-layout/index.ts
+export * from "./components";
+export * from "./hooks";
 
-// components
-export * from "./components/FlexLayout";
-export * from "./components/FlexLayoutContainer";
-export * from "./components/FlexLayoutSplitScreen";
-export * from "./components/FlexLayoutSplitScreenDragBox";
-export * from "./components/FlexLayoutSplitScreenScrollBox";
-export * from "./components/FlexLayoutStickyBox";
-export * from "./providers/FlexLayoutHooks";
+export * from "./providers";
 
-// store
-export * from "./store/FlexLayoutContainerStore";
+export * from "./utils";
 
-// utils
-export * from "./utils/FlexLayoutUtils";
-
-// hooks
-export * from "./hooks/useDrag";
+export * from "./store";
