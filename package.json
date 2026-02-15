@@ -1,49 +1,91 @@
 {
-  "name": "@byeolnaerim/flex-layout",
-  "version": "0.0.1",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./next": {
-      "types": "./dist/next.d.ts",
-      "import": "./dist/next.js",
-      "require": "./dist/next.cjs"
-    }
-  },
-  "files": [
-    "dist"
-  ], "sideEffects": ["**/*.css"],
-  "scripts": {
-    "build": "tsup && npm run copy:assets",
-    "copy:assets": "cpy \"**/*.css\" \"../dist\" --cwd=src --parents",
-    "dev": "tsup --watch",
-    "prepack": "npm run build"
-  },
- "devDependencies": {
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "cpy-cli": "^5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "rxjs": "^7.8.2",
-    "tsup": "^8.5.1",
-    "typescript": "5.9.3"
-  },
- "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18",
-    "rxjs": ">=7"
-  }, "peerDependenciesMeta": {
-    "rxjs": { "optional": true }
-  },
-  "publishConfig": {
-    "access": "restricted"
-  }
+	"name": "@byeolnaerim/flex-layout",
+	"version": "0.0.1",
+	"type": "module",
+	"license": "Apache-2.0",
+	"author": "Joohyoung Kim (@oozu1994)",
+	"description": "A React UI layout component for building resizable split views. Wrap panes with FlexLayout and drag the divider to resize horizontally or vertically.",
+	"keywords": [
+		"react",
+		"ui",
+		"layout",
+		"flex",
+		"split",
+		"split-pane",
+		"splitter",
+		"resizable",
+		"resize",
+		"drag",
+		"divider",
+		"panel",
+		"panes",
+		"dock",
+		"flex-layout",
+		"flexLayout",
+		"vscode",
+		"rxjs",
+		"typescript"
+	],
+	"homepage": "https://byeolnaerim.com/flex-layout",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/joohyoungkim19940805/flex-layout.git"
+	},
+	"bugs": {
+		"url": "https://github.com/joohyoungkim19940805/flex-layout/issues"
+	},
+	"funding": "",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./next": {
+			"types": "./dist/next.d.ts",
+			"import": "./dist/next.js",
+			"require": "./dist/next.cjs"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": [
+		"**/*.css"
+	],
+	"scripts": {
+		"build": "tsup && npm run copy:assets",
+		"copy:assets": "cpy \"**/*.css\" \"../dist\" --cwd=src --parents",
+		"dev": "tsup --watch",
+		"prepack": "npm run build"
+	},
+	"devDependencies": {
+		"@types/react": "^18",
+		"@types/react-dom": "^18",
+		"cpy-cli": "^5",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"rxjs": "^7.8.2",
+		"tsup": "^8.5.1",
+		"typescript": "5.9.3"
+	},
+	"peerDependencies": {
+		"react": ">=19",
+		"react-dom": ">=19",
+		"rxjs": ">=7"
+	},
+	"peerDependenciesMeta": {
+		"rxjs": {
+			"optional": true
+		}
+	},
+	"publishConfig": {
+		"access": "restricted"
+	},
+	"dependencies": {
+		"fast-deep-equal": "^3.1.3"
+	}
 }
