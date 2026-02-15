@@ -34,7 +34,6 @@
 	"bugs": {
 		"url": "https://github.com/joohyoungkim19940805/flex-layout/issues"
 	},
-	"funding": "",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -81,9 +80,6 @@
 		"rxjs": {
 			"optional": true
 		}
-	},
-	"publishConfig": {
-		"access": "restricted"
 	},
 	"dependencies": {
 		"fast-deep-equal": "^3.1.3"

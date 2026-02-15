@@ -3,7 +3,7 @@ import equal from "fast-deep-equal";
 import { RefObject } from "react";
 import { BehaviorSubject, combineLatest } from "rxjs";
 import { distinctUntilChanged, filter, map } from "rxjs/operators";
-import { DropTargetComponent } from "./hooks/useDrag";
+import { DropTargetComponent } from "../hooks/useDrag";
 
 /**
  * 이전 값과 새 값이 동일하지 않을 때만 store를 업데이트하는 유틸 함수
