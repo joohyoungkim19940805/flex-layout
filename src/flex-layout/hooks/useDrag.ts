@@ -1,4 +1,3 @@
-import { getClientXy } from "@ui/components/flexLayout/FlexLayoutUtils";
 import equal from "fast-deep-equal";
 import {
 	ReactElement,
@@ -10,6 +9,7 @@ import {
 } from "react";
 import { BehaviorSubject, distinctUntilChanged, map, Subject } from "rxjs";
 import { DropDocumentOutsideOption } from "../components/FlexLayoutSplitScreenDragBox";
+import { getClientXy } from "../utils/FlexLayoutUtils";
 export interface DragStateType {
 	isDragging: boolean;
 	isDrop: boolean;
@@ -177,7 +177,7 @@ export const useDragEvents = ({
 }: {
 	isBlockingActiveInput?: boolean;
 }) => {
-	const dragResumeTimer = useRef<NodeJS.Timeout | null>(null);
+	const dragResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const scrollThreshold = 10; // 이동 거리 임계값
 
 	const isScrolling = useRef<boolean>(false);
