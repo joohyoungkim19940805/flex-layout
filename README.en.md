@@ -1,6 +1,6 @@
 # @byeolnaerim/flex-layout
 
-> This document was drafted by ChatGPT based on the provided codebase and real-world usage examples. Some parts may be inaccurate, and the FlexLayout developer will review and revise it.
+> This document was drafted by ChatGPT using the codebase and real-world usage examples provided by the FlexLayout developer. It may contain inaccuracies, and the developer will verify and update it after review.
 
 A set of components to quickly build **flex-based resizable panels + split screen + Drag & Drop** UI in React (Next.js).
 
