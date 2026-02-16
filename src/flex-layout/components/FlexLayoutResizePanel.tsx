@@ -34,12 +34,25 @@ export default function FlexLayoutResizePanel({
 	panelClassName,
 	panelMovementMode,
 }: FlexLayoutResizePanelProps) {
-	let isResizePanelClickRef = useRef<boolean>(false);
-	let prevTouchEvent: globalThis.TouchEvent | null = null;
-	let parentSizeRef = useRef<number>(0);
-	let totalMovementRef = useRef<number>(0);
+	const directionRef = useRef(direction);
+	const movementModeRef = useRef(panelMovementMode);
+
+	useEffect(() => {
+		directionRef.current = direction;
+	}, [direction]);
+	useEffect(() => {
+		movementModeRef.current = panelMovementMode;
+	}, [panelMovementMode]);
+
+	const isResizePanelClickRef = useRef<boolean>(false);
+	const prevTouchEventRef = useRef<globalThis.TouchEvent | null>(null);
+	const parentSizeRef = useRef<number>(0);
+	const totalMovementRef = useRef<number>(0);
 
 	const containerCountRef = useRef<number>(containerCount);
+
+	const panelRef = useRef<HTMLDivElement>(null);
+
 	useEffect(() => {
 		return () => {
 			document.body.style.cursor = "";
@@ -48,7 +61,6 @@ export default function FlexLayoutResizePanel({
 	useEffect(() => {
 		containerCountRef.current = containerCount;
 	}, [containerCount]);
-	const panelRef = useRef<HTMLDivElement>(null);
 
 	const panelMouseDownEvent = (
 		event: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>,
@@ -63,7 +75,7 @@ export default function FlexLayoutResizePanel({
 			panelRef.current.parentElement.getBoundingClientRect()[
 				sizeName
 			] as number;
-		prevTouchEvent = null;
+		prevTouchEventRef.current = null;
 		totalMovementRef.current = 0;
 
 		if (!parentSizeRef.current) return;
@@ -73,8 +85,8 @@ export default function FlexLayoutResizePanel({
 	const panelMouseUpEvent = () => {
 		isResizePanelClickRef.current = false;
 		parentSizeRef.current = 0;
-		prevTouchEvent = null;
 		totalMovementRef.current = 0;
+		prevTouchEventRef.current = null;
 		document.body.style.cursor = "";
 	};
 
@@ -82,9 +94,11 @@ export default function FlexLayoutResizePanel({
 		originTarget: HTMLDivElement,
 		resizePanel: HTMLDivElement,
 		moveEvent: { movementX: number; movementY: number },
+		dir: string,
+		mode: string,
 	) {
 		//return new Promise<void>(resolve => {
-		const model = flexDirectionModel[direction];
+		const model = flexDirectionModel[dir];
 		const movement =
 			moveEvent[
 				("movement" + model.xy.toUpperCase()) as
@@ -194,6 +208,10 @@ export default function FlexLayoutResizePanel({
 				return;
 			}
 			event.preventDefault();
+
+			const dir = directionRef.current;
+			const mode = movementModeRef.current;
+
 			const targetElement = panelRef.current
 				.previousElementSibling as HTMLDivElement;
 			const targetPanel = panelRef.current;
@@ -201,23 +219,23 @@ export default function FlexLayoutResizePanel({
 
 			let move = { movementX: 0, movementY: 0 };
 			if (window.TouchEvent && event instanceof window.TouchEvent) {
-				if (!prevTouchEvent) {
-					prevTouchEvent = event as globalThis.TouchEvent;
+				const prev = prevTouchEventRef.current;
+				if (!prev) {
+					prevTouchEventRef.current = event;
 					return;
 				}
+
 				move.movementX =
-					(prevTouchEvent.touches[0].pageX - event.touches[0].pageX) *
-					-2;
+					(prev.touches[0].pageX - event.touches[0].pageX) * -1;
 				move.movementY =
-					(prevTouchEvent.touches[0].pageY - event.touches[0].pageY) *
-					-2;
-				prevTouchEvent = event;
+					(prev.touches[0].pageY - event.touches[0].pageY) * -1;
+				prevTouchEventRef.current = event;
 			} else {
 				move.movementX = (event as globalThis.MouseEvent).movementX;
 				move.movementY = (event as globalThis.MouseEvent).movementY;
 			}
 
-			moveMouseFlex(targetElement, targetPanel, move);
+			moveMouseFlex(targetElement, targetPanel, move, dir, mode);
 		};
 
 		["mousemove", "touchmove"].forEach((eventName) => {
