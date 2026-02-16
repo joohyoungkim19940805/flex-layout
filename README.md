@@ -111,7 +111,7 @@ import { FlexLayoutContainer } from "@byeolnaerim/flex-layout";
 - `isResizePanel?: boolean`  
   Whether to place a resize panel after this container.
 - `panelMode?: "default" | "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
-  The direction used for the resize panel (or open/close motion).
+  Controls the **visual orientation/anchor** of the resize panel (and the open/close motion).
 - `isFitContent?: boolean`  
   Fit based on content size.
 
