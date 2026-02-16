@@ -1,7 +1,8 @@
+import { HTMLAttributes } from "react";
 import styles from "../styles/FlexLayout.module.css";
 
 export interface FlexLayoutSplitScreenDragBoxTitleMoreProps extends Omit<
-	React.HTMLAttributes<HTMLButtonElement>,
+	HTMLAttributes<HTMLButtonElement>,
 	"children"
 > {}
 export default function FlexLayoutSplitScreenDragBoxTitleMore({

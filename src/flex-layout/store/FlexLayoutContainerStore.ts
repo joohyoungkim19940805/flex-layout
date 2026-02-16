@@ -197,7 +197,7 @@ export const flexResizePanelStore = new BehaviorSubject<RefStore>({});
 export const setContainerRef = <T extends HTMLElement>(
 	layoutName: string,
 	containerName: string,
-	ref: React.RefObject<T | null> | null,
+	ref: RefObject<T | null> | null,
 ) => {
 	const currentRefs = flexContainerStore.getValue();
 	const updatedLayoutRefs = { ...(currentRefs[layoutName] || {}) };
@@ -219,7 +219,7 @@ export const setContainerRef = <T extends HTMLElement>(
 export const setResizePanelRef = <T extends HTMLElement>(
 	layoutName: string,
 	containerName: string,
-	ref: React.RefObject<T | null> | null,
+	ref: RefObject<T | null> | null,
 ) => {
 	const currentRefs = flexResizePanelStore.getValue();
 	const updatedLayoutRefs = { ...(currentRefs[layoutName] || {}) };

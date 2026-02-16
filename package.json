@@ -50,7 +50,36 @@
 			"require": "./dist/index.cjs",
 			"default": "./dist/index.js"
 		},
-		"./package.json": "./package.json"
+		"./components": {
+			"types": "./dist/components.d.ts",
+			"import": "./dist/components.js",
+			"require": "./dist/components.cjs",
+			"default": "./dist/components.js"
+		},
+		"./hooks": {
+			"types": "./dist/hooks.d.ts",
+			"import": "./dist/hooks.js",
+			"require": "./dist/hooks.cjs",
+			"default": "./dist/hooks.js"
+		},
+		"./providers": {
+			"types": "./dist/providers.d.ts",
+			"import": "./dist/providers.js",
+			"require": "./dist/providers.cjs",
+			"default": "./dist/providers.js"
+		},
+		"./utils": {
+			"types": "./dist/utils.d.ts",
+			"import": "./dist/utils.js",
+			"require": "./dist/utils.cjs",
+			"default": "./dist/utils.js"
+		},
+		"./store": {
+			"types": "./dist/store.d.ts",
+			"import": "./dist/store.js",
+			"require": "./dist/store.cjs",
+			"default": "./dist/store.js"
+		}
 	},
 	"scripts": {
 		"build": "tsup && tsc -p tsconfig.build.json && npm run copy:assets",

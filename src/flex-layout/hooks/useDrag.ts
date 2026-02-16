@@ -1,7 +1,9 @@
 import equal from "fast-deep-equal";
 import {
+	MouseEvent,
 	ReactElement,
 	RefObject,
+	TouchEvent,
 	useCallback,
 	useEffect,
 	useRef,
@@ -192,7 +194,7 @@ export const useDragEvents = ({
 			event: _event,
 			dragStartCallback,
 		}: {
-			event: React.MouseEvent | React.TouchEvent | Event;
+			event: MouseEvent | TouchEvent | Event;
 			dragStartCallback: ({ x, y }: { x: number; y: number }) => void;
 		}) => {
 			const event = _event instanceof Event ? _event : _event.nativeEvent;
@@ -247,7 +249,7 @@ export const useDragEvents = ({
 			dragStartCallback,
 			moveingCallback,
 		}: {
-			event: React.MouseEvent | React.TouchEvent | Event;
+			event: MouseEvent | TouchEvent | Event;
 			notDragCallback?: ({ x, y }: { x: number; y: number }) => void;
 			dragStartCallback: ({ x, y }: { x: number; y: number }) => void;
 			moveingCallback: ({ x, y }: { x: number; y: number }) => void;
@@ -299,7 +301,7 @@ export const useDragEvents = ({
 			event: _event,
 			dragEndCallback,
 		}: {
-			event: React.MouseEvent | React.TouchEvent | Event;
+			event: MouseEvent | TouchEvent | Event;
 			dragEndCallback: ({ x, y }: { x: number; y: number }) => void;
 		}) => {
 			isScrolling.current = false;

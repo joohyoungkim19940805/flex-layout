@@ -23,8 +23,8 @@ export const useListPagingForSentinel = <E extends HTMLElement>({
 	lastChildRef: (node: E | null) => void;
 	//pageNumber: number;
 	//pageSize: number;
-	//setPageNumber: React.Dispatch<React.SetStateAction<number>>;
-	//setPageSize: React.Dispatch<React.SetStateAction<number>>;
+	//setPageNumber: Dispatch<SetStateAction<number>>;
+	//setPageSize: Dispatch<SetStateAction<number>>;
 } => {
 	const [firstChildNode, setFirstChildNode] = useState<E | null>(null);
 	const [lastChildNode, setLastChildNode] = useState<E | null>(null);

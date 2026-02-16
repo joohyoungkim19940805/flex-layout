@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, ReactNode, useContext } from "react";
 import { FlexLayoutContextValue } from "../types/FlexLayoutTypes";
 
 // Context 생성
@@ -19,7 +19,7 @@ export function useFlexLayoutContext() {
 // Provider 컴포넌트
 interface FlexLayoutProviderProps {
 	value: FlexLayoutContextValue;
-	children: React.ReactNode;
+	children: ReactNode;
 }
 
 export function FlexLayoutProvider({

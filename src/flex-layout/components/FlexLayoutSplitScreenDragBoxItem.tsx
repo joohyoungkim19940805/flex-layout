@@ -1,10 +1,10 @@
-import { ReactElement, useEffect } from "react";
+import { MouseEvent, ReactElement, useEffect } from "react";
 import { allSplitScreenCount } from "../hooks/useDrag";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexLayoutSplitScreenDragBoxProps } from "./FlexLayoutSplitScreenDragBox";
 export interface FlexLayoutSplitScreenDragBoxItemProps {
 	children: ReactElement<FlexLayoutSplitScreenDragBoxProps>;
-	onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+	onClose: (event: MouseEvent<HTMLButtonElement>) => void;
 	isActive: boolean;
 }
 export default function FlexLayoutSplitScreenDragBoxItem({

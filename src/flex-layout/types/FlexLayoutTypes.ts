@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode } from "react";
+import { HTMLAttributes, ReactElement, ReactNode, Ref } from "react";
 
 export type ResizePanelMode =
 	| "default"
@@ -37,7 +37,7 @@ export interface FlexLayoutPanelStyle {
 }
 
 export interface FlexLayoutProps extends Omit<
-	React.HTMLAttributes<HTMLDivElement>,
+	HTMLAttributes<HTMLDivElement>,
 	"children" | "id" | "panelClassName"
 > {
 	direction: Direction;
@@ -46,7 +46,7 @@ export interface FlexLayoutProps extends Omit<
 		| ReactElement<FlexLayoutChildrenType>;
 	layoutName: string;
 	isSplitScreen?: boolean;
-	ref?: React.Ref<HTMLDivElement>;
+	ref?: Ref<HTMLDivElement>;
 	className?: string;
 	panelClassName?: string;
 	panelMovementMode?: PanelMovementMode;

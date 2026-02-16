@@ -1,6 +1,6 @@
 "use client";
 
-import { HTMLAttributes, memo, useEffect, useRef, useState } from "react";
+import { FC, HTMLAttributes, memo, useEffect, useRef, useState } from "react";
 import { fromEvent, Subject } from "rxjs";
 import { take, throttleTime } from "rxjs/operators";
 import {
@@ -18,7 +18,7 @@ export interface FlexLayoutSplitScreenScrollBoxProps extends HTMLAttributes<HTML
 	isDefaultScrollStyle?: boolean;
 }
 
-const FlexLayoutSplitScreenScrollBox: React.FC<
+const FlexLayoutSplitScreenScrollBox: FC<
 	FlexLayoutSplitScreenScrollBoxProps
 > = ({
 	className,
