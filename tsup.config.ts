@@ -10,7 +10,7 @@ export default defineConfig({
 		providers: "src/flex-layout/providers/index.ts",
 	},
 	format: ["esm", "cjs"],
-	dts: true,
+	dts: false,
 	sourcemap: true,
 	clean: true,
 	treeshake: true,

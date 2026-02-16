@@ -187,10 +187,21 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 
 			if (!scrollRAF.current) {
 				const step = () => {
-					scrollTargetRef?.current?.scrollBy(
-						velocity.current.vx,
-						velocity.current.vy,
-					);
+					const target =
+						scrollTargetRef?.current ??
+						(document.scrollingElement as HTMLElement | null);
+
+					if (target?.scrollBy) {
+						target.scrollBy(
+							velocity.current.vx,
+							velocity.current.vy,
+						);
+					} else {
+						window.scrollBy(
+							velocity.current.vx,
+							velocity.current.vy,
+						);
+					}
 					if (
 						velocity.current.vx === 0 &&
 						velocity.current.vy === 0
