@@ -1,5 +1,7 @@
 # @byeolnaerim/flex-layout
 
+> This document was drafted by ChatGPT based on the provided codebase and real-world usage examples. Some parts may be inaccurate, and the FlexLayout developer will review and revise it.
+
 A set of components to quickly build **flex-based resizable panels + split screen + Drag & Drop** UI in React (Next.js).
 
 The core of this library is **`<FlexLayout />`**.  
@@ -86,8 +88,6 @@ import { FlexLayout } from "@byeolnaerim/flex-layout";
   Class name for customizing the resize panel style.
 - `panelMovementMode?: "default" | "bulldozer"`  
   How adjacent panels are pushed during resizing.
-- `panelMovementDisabledTransition?: boolean`  
-  Disable transitions while resizing.
 
 ---
 
@@ -110,10 +110,10 @@ import { FlexLayoutContainer } from "@byeolnaerim/flex-layout";
 - `style?: React.CSSProperties`
 - `isResizePanel?: boolean`  
   Whether to place a resize panel after this container.
-- `panelMode?: "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
-  The direction used for the resize panel (or open/close motion).
+- `panelMode?: "default" | "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
+  Controls the **visual orientation/anchor** of the resize panel (and the open/close motion).
 - `isFitContent?: boolean`  
-  Fit based on content size (useful for forms/tables).
+  Fit based on content size.
 
 ---
 

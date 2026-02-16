@@ -1,5 +1,7 @@
 # @byeolnaerim/flex-layout
 
+> 이 문서는 코드베이스와 사용 사례들을 제공받은 ChatGPT가 작성하였습니다. 문서의 내용이 정확하지 않을 수 있으며, FlexLayout 개발자가 검토 후 재수정할 예정입니다.
+
 React(Next.js)에서 **flex 기반 리사이즈 패널 + 스플릿 스크린 + Drag & Drop** UI를 빠르게 만들기 위한 컴포넌트 모음입니다.
 
 이 라이브러리의 핵심은 **`<FlexLayout />`** 입니다.  
@@ -86,8 +88,6 @@ import { FlexLayout } from "@byeolnaerim/flex-layout";
   리사이즈 패널 커스텀 스타일을 위한 클래스.
 - `panelMovementMode?: "default" | "bulldozer"`  
   패널 이동(리사이즈) 시 인접 패널들을 어떻게 밀어낼지에 대한 모드.
-- `panelMovementDisabledTransition?: boolean`  
-  리사이즈 중 transition 비활성화 옵션.
 
 ---
 
@@ -110,10 +110,10 @@ import { FlexLayoutContainer } from "@byeolnaerim/flex-layout";
 - `style?: React.CSSProperties`
 - `isResizePanel?: boolean`  
   이 컨테이너 뒤에 리사이즈 패널을 붙일지 여부.
-- `panelMode?: "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
-  리사이즈 패널(또는 열고 닫는 모션)을 어느 방향 기준으로 표현할지.
+- `panelMode?: "default" | "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
+  리사이즈 패널(또는 open/close 모션)의 **UI 방향/앵커(기준)** 를 결정하는 옵션입니다.
 - `isFitContent?: boolean`  
-  콘텐츠 높이/너비를 기준으로 fit 하게 처리(테이블/폼 영역에 유용).
+  콘텐츠 높이/너비를 기준으로 fit 하게 처리.
 
 ---
 
