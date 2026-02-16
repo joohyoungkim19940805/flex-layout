@@ -13,9 +13,9 @@ export default defineConfig({
 	dts: true,
 	sourcemap: true,
 	clean: true,
-	target: "es2020",
 	treeshake: true,
 	splitting: false,
+
 	//  React는 반드시 외부로
 	external: ["react", "react-dom", "react/jsx-runtime", "rxjs"],
 });

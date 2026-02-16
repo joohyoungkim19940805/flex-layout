@@ -1,3 +1,5 @@
+// src/flex-layout/components/index.ts
+
 export { default as FlexLayout } from "./FlexLayout";
 export { default as FlexLayoutContainer } from "./FlexLayoutContainer";
 export { default as FlexLayoutResizePanel } from "./FlexLayoutResizePanel";

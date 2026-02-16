@@ -1,14 +1,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlexContainerProps } from "../@types/FlexLayoutTypes";
 import { useSize } from "../hooks/useSizes";
 import { useFlexLayoutContext } from "../providers/FlexLayoutContext";
 import { setContainerRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
+import { FlexContainerProps } from "../types/FlexLayoutTypes";
 import { getGrow, mathGrow, mathWeight } from "../utils/FlexLayoutUtils";
 import FlexLayoutResizePanel from "./FlexLayoutResizePanel";
 
-const FlexLayoutContainer = ({
+export default function FlexLayoutContainer({
 	isFitContent,
 	isFitResize,
 	// fitContent,
@@ -22,7 +22,7 @@ const FlexLayoutContainer = ({
 	children,
 	className,
 	panelMode,
-}: FlexContainerProps) => {
+}: FlexContainerProps) {
 	const {
 		direction,
 		panelMovementMode,
@@ -249,6 +249,4 @@ const FlexLayoutContainer = ({
 			)}
 		</>
 	);
-};
-
-export default FlexLayoutContainer;
+}

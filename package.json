@@ -67,7 +67,8 @@
 			"types": "./dist/store.d.ts",
 			"import": "./dist/store.js",
 			"require": "./dist/store.cjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"
@@ -76,10 +77,11 @@
 		"**/*.css"
 	],
 	"scripts": {
-		"build": "tsup && npm run copy:assets",
-		"copy:assets": "cpy \"**/*.css\" \"../dist\" --cwd=src --parents",
+		"build": "tsup && tsc && npm run copy:assets",
+		"copy:assets": "cpy \"**/*.css\" \"./dist\" --cwd=src --parents",
 		"dev": "tsup --watch",
-		"prepack": "npm run build"
+		"prepack": "npm run build",
+		"prepare": "npm run build"
 	},
 	"devDependencies": {
 		"@types/react": "^18",
@@ -103,24 +105,5 @@
 	},
 	"dependencies": {
 		"fast-deep-equal": "^3.1.3"
-	},
-	"typesVersions": {
-		"*": {
-			"components": [
-				"dist/components.d.ts"
-			],
-			"hooks": [
-				"dist/hooks.d.ts"
-			],
-			"providers": [
-				"dist/providers.d.ts"
-			],
-			"utils": [
-				"dist/utils.d.ts"
-			],
-			"store": [
-				"dist/store.d.ts"
-			]
-		}
 	}
 }

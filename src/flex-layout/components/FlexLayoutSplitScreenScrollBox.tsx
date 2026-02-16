@@ -18,7 +18,9 @@ export interface FlexLayoutSplitScreenScrollBoxProps extends HTMLAttributes<HTML
 	isDefaultScrollStyle?: boolean;
 }
 
-const FlexLayoutSplitScreenScrollBox = ({
+const FlexLayoutSplitScreenScrollBox: React.FC<
+	FlexLayoutSplitScreenScrollBoxProps
+> = ({
 	className,
 	children,
 	keyName,

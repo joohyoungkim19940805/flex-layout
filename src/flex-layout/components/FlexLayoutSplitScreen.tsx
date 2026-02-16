@@ -340,7 +340,7 @@ export type FlexLayoutSplitScreenProps = {
 	screenKey?: string;
 };
 
-function FlexLayoutSplitScreen({
+export default function FlexLayoutSplitScreen({
 	children,
 	containerName,
 	layoutName,
@@ -1719,6 +1719,3 @@ function FlexLayoutSplitScreenChild({
 		</>
 	);
 }
-
-FlexLayoutSplitScreen.displayName = "FlexLayoutSplitScreen";
-export default FlexLayoutSplitScreen;

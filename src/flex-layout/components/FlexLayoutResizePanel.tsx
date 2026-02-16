@@ -2,10 +2,10 @@
 
 import type { TouchEvent } from "react";
 import { MouseEvent, useEffect, useRef } from "react";
-import { FlexDirectionModelType } from "../@types/FlexDirectionTypes";
-import { FlexLayoutResizePanelProps } from "../@types/FlexLayoutTypes";
 import { setResizePanelRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
+import { FlexDirectionModelType } from "../types/FlexDirectionTypes";
+import { FlexLayoutResizePanelProps } from "../types/FlexLayoutTypes";
 import { findNotCloseFlexContent, isOverMove } from "../utils/FlexLayoutUtils";
 
 const flexDirectionModel = {
@@ -25,7 +25,7 @@ const flexDirectionModel = {
 	} as FlexDirectionModelType,
 } as Record<string, FlexDirectionModelType>;
 
-const FlexLayoutResizePanel = ({
+export default function FlexLayoutResizePanel({
 	direction,
 	containerCount,
 	panelMode = "default",
@@ -33,7 +33,7 @@ const FlexLayoutResizePanel = ({
 	layoutName,
 	panelClassName,
 	panelMovementMode,
-}: FlexLayoutResizePanelProps) => {
+}: FlexLayoutResizePanelProps) {
 	let isResizePanelClickRef = useRef<boolean>(false);
 	let prevTouchEvent: globalThis.TouchEvent | null = null;
 	let parentSizeRef = useRef<number>(0);
@@ -178,6 +178,9 @@ const FlexLayoutResizePanel = ({
 			(nextElementSize / (parentSizeRef.current - 1)) *
 			containerCountRef.current;
 
+		if (!(targetElement instanceof HTMLElement)) return;
+		if (!(nextElement instanceof HTMLElement)) return;
+
 		targetElement.style.flex = `${targetFlexGrow} 1 0%`;
 		nextElement.style.flex = `${nextElementFlexGrow} 1 0%`;
 
@@ -252,6 +255,4 @@ const FlexLayoutResizePanel = ({
 			<div className={styles.hover}></div>
 		</div>
 	);
-};
-
-export default FlexLayoutResizePanel;
+}

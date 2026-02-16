@@ -1,5 +1,7 @@
-// src/flex-layout/index.ts
+//src/index.ts
+
 export * from "./components";
+
 export * from "./hooks";
 
 export * from "./providers";

@@ -6,13 +6,13 @@ import {
 	ReactElement,
 	ReactNode,
 } from "react";
+import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
+import styles from "../styles/FlexLayout.module.css";
 import {
 	FlexContainerProps,
 	FlexLayoutChildrenType,
 	FlexLayoutProps,
-} from "../@types/FlexLayoutTypes";
-import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
-import styles from "../styles/FlexLayout.module.css";
+} from "../types/FlexLayoutTypes";
 
 import { FlexLayoutProvider } from "../providers/FlexLayoutContext";
 
@@ -37,7 +37,7 @@ const withFlexLayout =
 		} as Partial<FlexContainerProps>);
 	};
 
-const FlexLayout = ({
+export default function FlexLayout({
 	layoutName,
 	direction,
 	children,
@@ -46,7 +46,7 @@ const FlexLayout = ({
 	panelClassName,
 	panelMovementMode = "divorce",
 	...props
-}: FlexLayoutProps) => {
+}: FlexLayoutProps) {
 	const containerCount = Children.count(children);
 	const fitContent = direction === "row" ? "width" : "height";
 	// Flatten children and unwrap Fragments
@@ -129,5 +129,4 @@ const FlexLayout = ({
 			</FlexLayoutProvider>
 		</>
 	);
-};
-export default FlexLayout;
+}

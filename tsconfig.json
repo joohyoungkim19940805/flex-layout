@@ -1,5 +1,5 @@
 {
-	"extends": "./react-library.json",
+	"extends": "./nextjs.json",
 	"compilerOptions": {
 		"target": "ES2020",
 		"module": "ESNext",
