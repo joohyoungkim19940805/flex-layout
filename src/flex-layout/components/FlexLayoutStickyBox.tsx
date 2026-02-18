@@ -24,6 +24,8 @@ interface FlexLayoutStickyBoxProps extends HTMLAttributes<HTMLDivElement> {
 	/** 자식 */
 	children: ReactNode;
 
+	transitionDurationMs?: number;
+
 	onTranslateChange?: (
 		value: number,
 		rootRef: RefObject<HTMLDivElement | null>,
@@ -88,6 +90,7 @@ const FlexLayoutStickyBox: FC<FlexLayoutStickyBoxProps> = ({
 	children,
 	style,
 	className,
+	transitionDurationMs = 200,
 	onTranslateChange = () => {},
 	...rest
 }) => {
@@ -109,10 +112,10 @@ const FlexLayoutStickyBox: FC<FlexLayoutStickyBoxProps> = ({
 		// ) {
 		setContentDynamicStyle({
 			willChange: "transform",
-			transition: "transform 50ms linear",
+			transition: `transform ${transitionDurationMs}ms linear`,
 		});
 		// }
-	}, []);
+	}, [transitionDurationMs]);
 
 	useEffect(() => {
 		offsetRef.current = offset;

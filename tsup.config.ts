@@ -1,3 +1,4 @@
+import { preserveDirectivesPlugin } from "esbuild-plugin-preserve-directives";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -9,7 +10,17 @@ export default defineConfig({
 
 	bundle: false,
 	splitting: false,
-	treeshake: true,
+	treeshake: false,
+
+	metafile: true,
+
+	esbuildPlugins: [
+		preserveDirectivesPlugin({
+			directives: ["use client"],
+			include: /\.(js|ts|jsx|tsx)$/,
+			exclude: /node_modules/,
+		}),
+	],
 
 	external: ["react", "react-dom", "react/jsx-runtime"],
 

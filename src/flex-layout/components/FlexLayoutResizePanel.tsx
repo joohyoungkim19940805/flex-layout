@@ -33,6 +33,7 @@ export default function FlexLayoutResizePanel({
 	layoutName,
 	panelClassName,
 	panelMovementMode,
+	onResizingChange,
 }: FlexLayoutResizePanelProps) {
 	const directionRef = useRef(direction);
 	const movementModeRef = useRef(panelMovementMode);
@@ -67,6 +68,7 @@ export default function FlexLayoutResizePanel({
 	) => {
 		if (!panelRef.current || !panelRef.current.parentElement) return;
 		isResizePanelClickRef.current = true;
+		onResizingChange?.(true);
 		containerCountRef.current = [
 			...panelRef.current.parentElement.children,
 		].filter((e) => e.hasAttribute("data-container_name")).length;
@@ -84,6 +86,7 @@ export default function FlexLayoutResizePanel({
 
 	const panelMouseUpEvent = () => {
 		isResizePanelClickRef.current = false;
+		onResizingChange?.(false);
 		parentSizeRef.current = 0;
 		totalMovementRef.current = 0;
 		prevTouchEventRef.current = null;

@@ -60,6 +60,7 @@ export type FlexLayoutResizePanelProps = {
 	layoutName: string;
 	panelMovementMode: PanelMovementMode;
 	panelClassName?: string;
+	onResizingChange?: (isResizing: boolean) => void;
 };
 
 export interface FlexLayoutContextValue {

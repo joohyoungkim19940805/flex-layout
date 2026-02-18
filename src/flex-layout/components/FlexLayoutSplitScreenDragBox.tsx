@@ -1,3 +1,4 @@
+"use client";
 import {
 	CSSProperties,
 	HTMLAttributes,
@@ -78,7 +79,22 @@ function calcVelocity(dx: number, dy: number, x: number, y: number) {
 	/* ←→·↑↓ **반대 방향**으로 스크롤 */
 	return { vx: -dx * multX, vy: -dy * multY };
 }
+function createScreenKey() {
+	const c = globalThis.crypto as Crypto | undefined;
 
+	// 지원되면 제일 깔끔
+	if (c?.randomUUID) return c.randomUUID();
+
+	// getRandomValues 가능하면 기존 로직 유지
+	if (c?.getRandomValues) {
+		return Array.from(c.getRandomValues(new Uint32Array(16)), (e) =>
+			e.toString(32).padStart(2, "0"),
+		).join("");
+	}
+
+	// 최후의 폴백
+	return `${Date.now().toString(32)}-${Math.random().toString(32).slice(2)}`;
+}
 export interface FlexLayoutSplitScreenDragBoxProps<
 	E extends HTMLElement = HTMLElement,
 > extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
@@ -123,10 +139,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	children,
 	className,
 	dropDocumentOutsideOption,
-	screenKey = Array.from(
-		window.crypto.getRandomValues(new Uint32Array(16)),
-		(e) => e.toString(32).padStart(2, "0"),
-	).join(""),
+	screenKey = createScreenKey(),
 	isBlockingActiveInput = false,
 	customData = {},
 	scrollTargetRef,

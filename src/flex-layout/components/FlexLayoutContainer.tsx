@@ -40,6 +40,12 @@ export default function FlexLayoutContainer({
 	// 콜백 ref에서 접근하기 위한 내부 ref 생성
 	const flexContainerNodeRef = useRef<HTMLDivElement | null>(null);
 
+	const isUserResizingRef = useRef(false);
+
+	const handleResizingChange = useCallback((v: boolean) => {
+		isUserResizingRef.current = v;
+	}, []);
+
 	// 콜백 ref 정의
 	const flexContainerRef = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -137,8 +143,9 @@ export default function FlexLayoutContainer({
 			!ref ||
 			!ref.current ||
 			!size ||
-			!fitContent
+			!fitContent ||
 			//||getGrow(flexContainerRef.current) == 0
+			isUserResizingRef.current // 사용자가 직접 사이즈 조정 중일 때는 자동 조정 방지
 		)
 			return;
 		requestAnimationFrame(() => {
@@ -204,6 +211,78 @@ export default function FlexLayoutContainer({
 			});
 		}
 	}, []);
+
+	useEffect(() => {
+		if (
+			!flexContainerNodeRef.current ||
+			!isFitContent ||
+			!fitContent ||
+			!size
+		)
+			return;
+
+		const parent = flexContainerNodeRef.current.parentElement;
+		if (!parent) return;
+
+		const sizeName =
+			fitContent.charAt(0).toUpperCase() + fitContent.substring(1);
+		const parentSize =
+			(parent[
+				("client" + sizeName) as "clientWidth" | "clientHeight"
+			] as number) || 0;
+
+		if (!parentSize || containerCount <= 0) return;
+
+		// 내 grow 재계산 (0 ~ containerCount로 클램프)
+		const nextGrowRaw = mathGrow(size, parentSize, containerCount);
+		const nextGrow = Math.min(containerCount, Math.max(0, nextGrowRaw));
+		const currentGrow = getGrow(flexContainerNodeRef.current);
+
+		// 미세 변화로 루프 도는 것 방지
+		if (Math.abs(nextGrow - currentGrow) < 0.001) return;
+
+		setPrevGrowState(currentGrow);
+		setGrowState(nextGrow);
+
+		// 형제 컨테이너 grow 재분배
+		const containers = [...(parent.children || [])].filter((el) => {
+			const item = el as HTMLElement;
+			return (
+				item.hasAttribute("data-container_name") &&
+				!item.classList.contains(styles["flex-resize-panel"])
+			);
+		}) as HTMLElement[];
+
+		const siblings = containers.filter(
+			(el) => el !== (flexContainerNodeRef.current as HTMLElement),
+		);
+
+		// 닫힌 컨테이너는 건드리지 않음
+		const adjustable = siblings.filter((el) => el.style.flex !== "0 1 0%");
+
+		const remaining = containerCount - nextGrow;
+		if (remaining <= 0 || adjustable.length === 0) return;
+
+		const oldSum = adjustable.reduce((sum, el) => sum + getGrow(el), 0);
+
+		if (oldSum <= 0) {
+			// 기존 grow 합이 0이면 균등분배
+			const each = remaining / adjustable.length;
+			adjustable.forEach((el) => {
+				el.dataset.grow = each.toString();
+				el.style.flex = `${each} 1 0%`;
+			});
+		} else {
+			// 기존 grow 비율대로 스케일링
+			adjustable.forEach((el) => {
+				const g = getGrow(el);
+				const scaled = remaining * (g / oldSum);
+				el.dataset.grow = scaled.toString();
+				el.style.flex = `${scaled} 1 0%`;
+			});
+		}
+	}, [size, isFitContent, fitContent, containerCount]);
+
 	return (
 		<>
 			<div
@@ -245,6 +324,7 @@ export default function FlexLayoutContainer({
 					panelMode={panelMode}
 					panelClassName={panelClassName}
 					panelMovementMode={panelMovementMode}
+					onResizingChange={handleResizingChange}
 				/>
 			)}
 		</>
