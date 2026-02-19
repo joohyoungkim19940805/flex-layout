@@ -79,6 +79,14 @@ export default function FlexLayoutContainer({
 		};
 	}, [containerName, layoutName]);
 
+	useEffect(() => {
+		if (!flexContainerNodeRef.current) return;
+		setContainerRef(layoutName, containerName, flexContainerNodeRef);
+		return () => {
+			setContainerRef(layoutName, containerName, null);
+		};
+	}, [containerName, layoutName]);
+
 	// 클라이언트 마운트 후 sessionStorage에서 grow값을 가져와 state 업데이트 (SSR/Hydration 안정화)
 	useEffect(() => {
 		if (
@@ -217,7 +225,8 @@ export default function FlexLayoutContainer({
 			!flexContainerNodeRef.current ||
 			!isFitContent ||
 			!fitContent ||
-			!size
+			!size ||
+			growState === 0
 		)
 			return;
 

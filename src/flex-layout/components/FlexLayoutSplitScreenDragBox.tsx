@@ -14,6 +14,7 @@ import { dragState, useDragEvents } from "../hooks/useDrag";
 
 import styles from "../styles/FlexLayout.module.css";
 import { isDocumentOut } from "../utils/FlexLayoutUtils";
+
 const MAX_STEP = 18;
 
 function shouldAllowViewportScroll(x: number, y: number) {
@@ -55,6 +56,7 @@ function edgeVelocity(x: number, y: number) {
 
 	return { vx, vy };
 }
+
 function calcVelocity(dx: number, dy: number, x: number, y: number) {
 	const w = window.innerWidth,
 		h = window.innerHeight;
@@ -79,22 +81,22 @@ function calcVelocity(dx: number, dy: number, x: number, y: number) {
 	/* ←→·↑↓ **반대 방향**으로 스크롤 */
 	return { vx: -dx * multX, vy: -dy * multY };
 }
+
 function createScreenKey() {
 	const c = globalThis.crypto as Crypto | undefined;
 
-	// 지원되면 제일 깔끔
 	if (c?.randomUUID) return c.randomUUID();
 
-	// getRandomValues 가능하면 기존 로직 유지
 	if (c?.getRandomValues) {
 		return Array.from(c.getRandomValues(new Uint32Array(16)), (e) =>
 			e.toString(32).padStart(2, "0"),
 		).join("");
 	}
 
-	// 최후의 폴백
+	//  폴백
 	return `${Date.now().toString(32)}-${Math.random().toString(32).slice(2)}`;
 }
+
 export interface FlexLayoutSplitScreenDragBoxProps<
 	E extends HTMLElement = HTMLElement,
 > extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
@@ -145,7 +147,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	scrollTargetRef,
 	...props
 }: FlexLayoutSplitScreenDragBoxProps) {
-	//const lastTouch = useRef<{ x: number; y: number } | null>(null);
 	const scrollRAF = useRef<number | null>(null); // 애니메이션 루프 id
 	const velocity = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
 	const ref = useRef<HTMLDivElement>(null);
@@ -157,6 +158,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	const { handleStart, handleMove, handleEnd } = useDragEvents({
 		isBlockingActiveInput,
 	});
+
 	const handleMoveWrapper = (event: Event) => {
 		let allowScrollEdge = false;
 		let x = 0;
@@ -182,21 +184,11 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 				cancelAnimationFrame(scrollRAF.current);
 				scrollRAF.current = null;
 			}
-			// velocity.current = { vx: 0, vy: 0 };
 		}
 
-		if (
-			clonedNodeRef.current?.isConnected &&
-			inEdge
-			//&&lastTouch.current
-		) {
+		if (clonedNodeRef.current?.isConnected && inEdge) {
 			event.preventDefault();
-			// const dx = x - lastTouch.current.x; // 손가락 이동량
-			// const dy = y - lastTouch.current.y;
-
 			velocity.current = { vx, vy }; // ← X·Y 둘 다 들어갈 수 있음
-
-			// const { vx, vy } = calcVelocity(dx, dy, x, y);
 
 			if (!scrollRAF.current) {
 				const step = () => {
@@ -226,8 +218,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 				};
 				scrollRAF.current = requestAnimationFrame(step);
 			}
-
-			//lastTouch.current = { x, y };
 		}
 		if (event.type !== "touchmove") {
 			/* 마우스 · 펜 → 항상 고정 */
@@ -264,13 +254,24 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			},
 		});
 	};
+
 	const handleEndWrapper = (event: Event) => {
+		//  안전장치로 RAF 취소
 		if (scrollRAF.current !== null) {
 			cancelAnimationFrame(scrollRAF.current);
 			scrollRAF.current = null;
 		}
 		velocity.current = { vx: 0, vy: 0 };
-		//lastTouch.current = null;
+
+		// 추가 안전장치 blur나 cancel 이벤트 발생 시 Clone 노드를 강제 정리
+		if (
+			event.type === "blur" ||
+			event.type === "touchcancel" ||
+			event.type === "pointercancel"
+		) {
+			if (clonedNodeRef.current) clonedNodeRef.current.remove();
+		}
+
 		handleEnd({
 			event,
 			dragEndCallback: ({ x, y }) => {
@@ -313,9 +314,10 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			},
 		});
 	};
+
 	useEffect(() => {
 		if (ref.current) {
-			const clone = ref.current.cloneNode(true) as HTMLDivElement; //document.createElement('div');
+			const clone = ref.current.cloneNode(true) as HTMLDivElement;
 			const originRect = ref.current.getBoundingClientRect();
 			clone.style.width = originRect.width + "px";
 			clone.style.height = originRect.height + "px";
@@ -348,7 +350,16 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			"mousemove",
 			"touchmove",
 		];
-		const endEvents: Array<keyof WindowEventMap> = ["mouseup", "touchend"];
+
+		// 드래그 상태가 붕괴되거나 좀비 상태가 될 수 있는 예외 케이스들을 모두 포함
+		const endEvents: Array<keyof WindowEventMap> = [
+			"mouseup",
+			"touchend",
+			"touchcancel", // 터치 제스처 시스템 인터럽트
+			"pointerup", // 범용 포인터 이벤트
+			"pointercancel",
+			"blur", // 윈도우 포커스 아웃 (Alt+Tab 등)
+		];
 
 		moveEvents.forEach((eventName) => {
 			window.addEventListener(eventName, handleMoveWrapper, {
@@ -376,6 +387,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		navigationTitle,
 		dropEndCallback,
 	]);
+
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) return;
@@ -388,6 +400,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			el.removeEventListener("contextmenu", onCtx);
 		};
 	}, []);
+
 	return (
 		<>
 			<div
@@ -422,8 +435,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								navigator.vibrate(100);
 								clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
 								clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
-								//clonedNodeRef.current.style.left = `${clientX}px`;
-								//clonedNodeRef.current.style.top = `${clientY}px`;
 							}
 							dragState.next({
 								isDragging: true,
@@ -466,8 +477,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								navigator.vibrate(100);
 								clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
 								clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
-								//clonedNodeRef.current.style.left = `${clientX}px`;
-								//clonedNodeRef.current.style.top = `${clientY}px`;
 							}
 							dragState.next({
 								isDragging: true,

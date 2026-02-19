@@ -86,14 +86,10 @@ export const getScrollPosition = (layoutName: string) => {
 		),
 	);
 };
-
 export const removeScrollPosition = (layoutName: string) => {
 	const current = scrollPositionsSubject.getValue();
-	delete current[layoutName];
-
-	// 꼭 삭제 후에도 이전 상태와 달라졌는지 확인
-	const newPositions = { ...current };
-	updateScrollStore(scrollPositionsSubject, newPositions);
+	const { [layoutName]: _, ...rest } = current; // current를 mutate하지 않음
+	updateScrollStore(scrollPositionsSubject, rest);
 };
 
 export type SplitScreenComponents = {

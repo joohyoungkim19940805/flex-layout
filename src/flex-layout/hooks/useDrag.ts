@@ -9,7 +9,14 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { BehaviorSubject, distinctUntilChanged, map, Subject } from "rxjs";
+import {
+	animationFrameScheduler,
+	auditTime,
+	BehaviorSubject,
+	distinctUntilChanged,
+	map,
+	Subject,
+} from "rxjs";
 import { DropDocumentOutsideOption } from "../components/FlexLayoutSplitScreenDragBox";
 import { getClientXy } from "../utils/FlexLayoutUtils";
 export interface DragStateType {
@@ -52,8 +59,7 @@ const filterChildren = (obj: any) => {
 };
 
 export const useDragCapture = (targetRef: RefObject<HTMLElement | null>) => {
-	const stateRef = useRef<DragStateResultType | null>(null); // 상태를 저장하는 useRef
-	const forceUpdate = useRef(0); // 강제로 업데이트를 트리거하기 위한 변수
+	const [state, setState] = useState<DragStateResultType | null>(null);
 
 	useEffect(() => {
 		const subscription = dragState
@@ -99,39 +105,20 @@ export const useDragCapture = (targetRef: RefObject<HTMLElement | null>) => {
 						...value,
 					};
 				}),
+				auditTime(0, animationFrameScheduler), // animationFrame마다 한 번씩만 처리
 				distinctUntilChanged((prev, curr) =>
 					equal(filterChildren(prev), filterChildren(curr)),
 				),
 			)
 			.subscribe({
-				next: (value) => {
-					if (
-						value &&
-						!equal(
-							filterChildren(stateRef.current),
-							filterChildren(value),
-						)
-					) {
-						stateRef.current = value; // 상태를 업데이트
-						forceUpdate.current++; // 업데이트 트리거
-					}
-				},
+				next: setState,
 				error: (err) => console.error(err),
 			});
 
 		return () => subscription.unsubscribe();
 	}, [targetRef]);
 
-	// 강제 렌더링을 트리거하기 위한 업데이트
-	const [, rerender] = useState({});
-	useEffect(() => {
-		const interval = setInterval(() => {
-			rerender({}); // 변경된 ref 상태를 반영
-		}, 50); // 50ms 간격으로 렌더링 반영
-		return () => clearInterval(interval);
-	}, []);
-
-	return stateRef.current;
+	return state;
 };
 export interface DropTargetComponent {
 	containerName: string;

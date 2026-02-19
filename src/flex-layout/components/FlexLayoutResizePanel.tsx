@@ -265,6 +265,14 @@ export default function FlexLayoutResizePanel({
 		setResizePanelRef(layoutName, containerName, panelRef);
 	}, [containerName, layoutName]);
 
+	useEffect(() => {
+		if (!panelRef.current) return;
+		setResizePanelRef(layoutName, containerName, panelRef);
+		return () => {
+			setResizePanelRef(layoutName, containerName, null);
+		};
+	}, [containerName, layoutName]);
+
 	return (
 		<div
 			id={containerName + "_resize_panel"}

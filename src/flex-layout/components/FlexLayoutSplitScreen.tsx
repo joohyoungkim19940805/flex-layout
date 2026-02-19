@@ -915,7 +915,7 @@ function FlexLayoutSplitScreenChild({
 				});
 			});
 		return () => {
-			removeSplitScreenChild(rootName, layoutName);
+			removeSplitScreenChild(rootName, `${layoutName}=${screenKey}`);
 			subscribe.unsubscribe();
 		};
 	}, [rootName, layoutName, initialCenterComponents]);
