@@ -88,7 +88,7 @@ export const getScrollPosition = (layoutName: string) => {
 };
 export const removeScrollPosition = (layoutName: string) => {
 	const current = scrollPositionsSubject.getValue();
-	const { [layoutName]: _, ...rest } = current; // current를 mutate하지 않음
+	const { [layoutName]: _, ...rest } = current; 
 	updateScrollStore(scrollPositionsSubject, rest);
 };
 
