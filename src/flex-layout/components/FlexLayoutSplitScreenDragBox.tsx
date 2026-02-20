@@ -9,11 +9,17 @@ import {
 	TouchEvent,
 	useEffect,
 	useRef,
+	useState,
 } from "react";
-import { dragState, useDragEvents } from "../hooks/useDrag";
+import {
+	dragStateSubject,
+	DragStateType,
+	useDragEvents,
+} from "../hooks/useDrag";
 
 import styles from "../styles/FlexLayout.module.css";
 import { isDocumentOut } from "../utils/FlexLayoutUtils";
+import { FlexLayoutIFramePane } from "./FlexLayoutIFramePane";
 
 const MAX_STEP = 18;
 
@@ -97,6 +103,22 @@ function createScreenKey() {
 	return `${Date.now().toString(32)}-${Math.random().toString(32).slice(2)}`;
 }
 
+function getFallbackElement(targetComponent?: ReactElement, url?: string) {
+	if (targetComponent) return targetComponent;
+	if (url) return <FlexLayoutIFramePane url={url} />;
+	return undefined;
+}
+
+function titleFromUrl(url?: string) {
+	if (!url) return undefined;
+	try {
+		const u = new URL(url);
+		return u.hostname;
+	} catch {
+		return url;
+	}
+}
+
 export interface FlexLayoutSplitScreenDragBoxProps<
 	E extends HTMLElement = HTMLElement,
 > extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
@@ -141,12 +163,17 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	children,
 	className,
 	dropDocumentOutsideOption,
-	screenKey = createScreenKey(),
+	screenKey: _screenKey,
 	isBlockingActiveInput = false,
 	customData = {},
 	scrollTargetRef,
 	...props
 }: FlexLayoutSplitScreenDragBoxProps) {
+	const [screenKey, setScreenKey] = useState<string>();
+	useEffect(() => {
+		if (!_screenKey) setScreenKey(createScreenKey());
+		else setScreenKey(_screenKey);
+	}, [_screenKey]);
 	const scrollRAF = useRef<number | null>(null); // 애니메이션 루프 id
 	const velocity = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
 	const ref = useRef<HTMLDivElement>(null);
@@ -154,6 +181,29 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	const clonedWidth = useRef<number | null>(null);
 	const clonedHeight = useRef<number | null>(null);
 	const hrefUrlRef = useRef<string>("");
+
+	const rafId = useRef<number | null>(null);
+	const pending = useRef<DragStateType | null>(null);
+
+	const lastPointRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+	const escCanceledRef = useRef(false);
+
+	const emitDragState = (v: DragStateType) => {
+		pending.current = v;
+		if (rafId.current != null) return;
+
+		rafId.current = requestAnimationFrame(() => {
+			if (pending.current) dragStateSubject.next(pending.current);
+			pending.current = null;
+			rafId.current = null;
+		});
+	};
+
+	useEffect(() => {
+		return () => {
+			if (rafId.current != null) cancelAnimationFrame(rafId.current);
+		};
+	}, []);
 
 	const { handleStart, handleMove, handleEnd } = useDragEvents({
 		isBlockingActiveInput,
@@ -230,21 +280,28 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			},
 			dragStartCallback: ({ x, y }) => {
 				if (!clonedNodeRef.current) return;
+
 				navigator.vibrate(100);
-				clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
-				clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
+				clonedNodeRef.current.style.transform = `translate3d(${x - (clonedWidth.current || 0) / 2}px, ${y - (clonedHeight.current || 0) / 2}px, 0)`;
 			},
 			moveingCallback: ({ x, y }) => {
+				lastPointRef.current = { x, y };
 				if (clonedNodeRef.current?.isConnected) {
-					clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
-					clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
+					clonedNodeRef.current.style.transform = `translate3d(${x - (clonedWidth.current || 0) / 2}px, ${y - (clonedHeight.current || 0) / 2}px, 0)`;
+					// clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
+					// clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
 				}
 
-				dragState.next({
+				emitDragState({
 					isDragging: true,
 					isDrop: false,
-					navigationTitle,
-					children: targetComponent,
+					navigationTitle:
+						navigationTitle ??
+						titleFromUrl(dropDocumentOutsideOption?.openUrl),
+					children: getFallbackElement(
+						targetComponent,
+						dropDocumentOutsideOption?.openUrl,
+					),
 					x,
 					y,
 					containerName,
@@ -275,6 +332,29 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		handleEnd({
 			event,
 			dragEndCallback: ({ x, y }) => {
+				if (escCanceledRef.current) {
+					escCanceledRef.current = false;
+					if (clonedNodeRef.current) clonedNodeRef.current.remove();
+
+					emitDragState({
+						isDragging: false,
+						isDrop: false,
+						navigationTitle:
+							navigationTitle ??
+							titleFromUrl(dropDocumentOutsideOption?.openUrl),
+						children: getFallbackElement(
+							targetComponent,
+							dropDocumentOutsideOption?.openUrl,
+						),
+						x,
+						y,
+						containerName,
+						dropDocumentOutsideOption,
+						customData,
+					});
+					return;
+				}
+
 				const href = hrefUrlRef.current;
 				if (clonedNodeRef.current) clonedNodeRef.current.remove();
 				if (dropDocumentOutsideOption && isDocumentOut({ x, y })) {
@@ -298,11 +378,16 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 						);
 					}
 				}
-				dragState.next({
+				emitDragState({
 					isDragging: false,
 					isDrop: true,
-					navigationTitle,
-					children: targetComponent,
+					navigationTitle:
+						navigationTitle ??
+						titleFromUrl(dropDocumentOutsideOption?.openUrl),
+					children: getFallbackElement(
+						targetComponent,
+						dropDocumentOutsideOption?.openUrl,
+					),
 					x,
 					y,
 					containerName,
@@ -332,12 +417,21 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 				clone.prepend(href);
 			}
 
-			if (navigationTitle) {
-				const title = document.createElement("span");
-				title.textContent = navigationTitle;
-				clone.prepend(title);
-			}
+			const title = document.createElement("span");
+			title.textContent =
+				navigationTitle ??
+				titleFromUrl(dropDocumentOutsideOption?.openUrl) ??
+				"";
+			clone.prepend(title);
+
 			clone.style.position = "fixed";
+			clone.style.left = "0px";
+			clone.style.top = "0px";
+			clone.style.margin = "0px";
+			clone.style.willChange = "transform";
+			clone.style.transform = "translate3d(-9999px, -9999px, 0)";
+			clone.style.pointerEvents = "none";
+
 			clonedNodeRef.current = clone;
 			clonedNodeRef.current.classList.add(
 				styles["flex-split-screen-drag-box-clone"],
@@ -401,6 +495,79 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		};
 	}, []);
 
+	useEffect(() => {
+		return () => {
+			if (scrollRAF.current !== null) {
+				cancelAnimationFrame(scrollRAF.current);
+				scrollRAF.current = null;
+			}
+			velocity.current = { vx: 0, vy: 0 };
+			clonedNodeRef.current?.remove();
+		};
+	}, []);
+
+	//취소 이벤트
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== "Escape") return;
+
+			// 드래그가 실제로 시작된 상태에서만 (clone이 body에 붙어있는 상태)
+			if (!clonedNodeRef.current?.isConnected) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+
+			// 다음 mouseup이 와도 drop 로직 안 타게
+			escCanceledRef.current = true;
+
+			// 스크롤/RAF 정리
+			if (scrollRAF.current !== null) {
+				cancelAnimationFrame(scrollRAF.current);
+				scrollRAF.current = null;
+			}
+			velocity.current = { vx: 0, vy: 0 };
+
+			// clone 제거
+			clonedNodeRef.current?.remove();
+
+			//  useDragEvents 내부 상태도 "끝"으로 만들어 좀비 드래그 방지
+			// (좌표는 hook이 마지막 좌표를 들고 있거나, 아래 emit에선 lastPointRef를 사용)
+			handleEnd({
+				event: new Event("pointercancel"),
+				dragEndCallback: () => {},
+			});
+
+			// overlay 등 외부 UI도 즉시 종료시키기
+			const { x, y } = lastPointRef.current;
+			emitDragState({
+				isDragging: false,
+				isDrop: false,
+				navigationTitle:
+					navigationTitle ??
+					titleFromUrl(dropDocumentOutsideOption?.openUrl),
+				children: getFallbackElement(
+					targetComponent,
+					dropDocumentOutsideOption?.openUrl,
+				),
+				x,
+				y,
+				containerName,
+				dropDocumentOutsideOption,
+				customData,
+			});
+		};
+
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => window.removeEventListener("keydown", onKeyDown, true);
+	}, [
+		handleEnd,
+		containerName,
+		navigationTitle,
+		dropDocumentOutsideOption,
+		targetComponent,
+		customData,
+	]);
+
 	return (
 		<>
 			<div
@@ -414,6 +581,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 					handleStart({
 						event: ev,
 						dragStartCallback: ({ x, y }) => {
+							lastPointRef.current = { x, y };
 							if (clonedNodeRef.current) {
 								document.body.appendChild(
 									clonedNodeRef.current,
@@ -433,14 +601,21 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 
 							if (clonedNodeRef.current?.isConnected) {
 								navigator.vibrate(100);
-								clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
-								clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
+
+								clonedNodeRef.current.style.transform = `translate3d(${x - (clonedWidth.current || 0) / 2}px, ${y - (clonedHeight.current || 0) / 2}px, 0)`;
 							}
-							dragState.next({
+							emitDragState({
 								isDragging: true,
 								isDrop: false,
-								navigationTitle,
-								children: targetComponent,
+								navigationTitle:
+									navigationTitle ??
+									titleFromUrl(
+										dropDocumentOutsideOption?.openUrl,
+									),
+								children: getFallbackElement(
+									targetComponent,
+									dropDocumentOutsideOption?.openUrl,
+								),
 								x,
 								y,
 								containerName,
@@ -475,14 +650,20 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 							}
 							if (clonedNodeRef.current?.isConnected) {
 								navigator.vibrate(100);
-								clonedNodeRef.current.style.left = `${x - (clonedWidth.current || 0) / 2}px`;
-								clonedNodeRef.current.style.top = `${y - (clonedHeight.current || 0) / 2}px`;
+								clonedNodeRef.current.style.transform = `translate3d(${x - (clonedWidth.current || 0) / 2}px, ${y - (clonedHeight.current || 0) / 2}px, 0)`;
 							}
-							dragState.next({
+							emitDragState({
 								isDragging: true,
 								isDrop: false,
-								navigationTitle,
-								children: targetComponent,
+								navigationTitle:
+									navigationTitle ??
+									titleFromUrl(
+										dropDocumentOutsideOption?.openUrl,
+									),
+								children: getFallbackElement(
+									targetComponent,
+									dropDocumentOutsideOption?.openUrl,
+								),
 								x,
 								y,
 								containerName,

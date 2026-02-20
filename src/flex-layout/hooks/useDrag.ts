@@ -51,7 +51,14 @@ export interface DragStateResultType extends DragStateType {
 	positionName: PositionName;
 	isOver: boolean;
 }
-export const dragState = new Subject<DragStateType>();
+export const dragStateSubject = new Subject<DragStateType>();
+/**
+ * @deprecated Use `dragStateSubject` instead. This alias will be removed in a future release.
+ */
+export const dragState = dragStateSubject;
+
+export const isResizingSubject = new BehaviorSubject<boolean>(false);
+
 const filterChildren = (obj: any) => {
 	// 객체 복사 후 children 속성 제거
 	const { children, ...rest } = obj || {};
@@ -62,8 +69,9 @@ export const useDragCapture = (targetRef: RefObject<HTMLElement | null>) => {
 	const [state, setState] = useState<DragStateResultType | null>(null);
 
 	useEffect(() => {
-		const subscription = dragState
+		const subscription = dragStateSubject
 			.pipe(
+				auditTime(0, animationFrameScheduler),
 				map((value) => {
 					if (!targetRef || !targetRef.current) return null;
 
@@ -105,10 +113,12 @@ export const useDragCapture = (targetRef: RefObject<HTMLElement | null>) => {
 						...value,
 					};
 				}),
-				auditTime(0, animationFrameScheduler), // animationFrame마다 한 번씩만 처리
-				distinctUntilChanged((prev, curr) =>
-					equal(filterChildren(prev), filterChildren(curr)),
-				),
+				distinctUntilChanged((prev, curr) => {
+					const { children: prevChildren, ..._prev } = prev || {};
+					const { children: currChildren, ..._curr } = curr || {};
+
+					return equal(filterChildren(_prev), filterChildren(_curr));
+				}),
 			)
 			.subscribe({
 				next: setState,
@@ -167,6 +177,10 @@ export const useDragEvents = ({
 	isBlockingActiveInput?: boolean;
 }) => {
 	const dragResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const dragStartDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+
 	const scrollThreshold = 10; // 이동 거리 임계값
 
 	const isScrolling = useRef<boolean>(false);
@@ -175,6 +189,19 @@ export const useDragEvents = ({
 	const isDragging = useRef(false); // 드래그 상태 플래그
 	const touchStartX = useRef<number>(0);
 	const touchStartY = useRef<number>(0);
+
+	useEffect(() => {
+		return () => {
+			if (dragResumeTimer.current) {
+				clearTimeout(dragResumeTimer.current);
+				dragResumeTimer.current = null;
+			}
+			if (dragStartDelayTimer.current) {
+				clearTimeout(dragStartDelayTimer.current);
+				dragStartDelayTimer.current = null;
+			}
+		};
+	}, []);
 
 	const handleStart = useCallback(
 		({
@@ -191,6 +218,10 @@ export const useDragEvents = ({
 				clearTimeout(dragResumeTimer.current);
 				dragResumeTimer.current = null;
 			}
+			if (dragStartDelayTimer.current) {
+				clearTimeout(dragStartDelayTimer.current);
+				dragStartDelayTimer.current = null;
+			}
 
 			if (
 				(event.target as HTMLElement).contentEditable === "true" ||
@@ -199,21 +230,41 @@ export const useDragEvents = ({
 			) {
 				return;
 			}
-			if (event.cancelable) {
+			if (event.cancelable && !(event instanceof globalThis.TouchEvent)) {
 				event.preventDefault(); // cancelable=false 면 자동 skip
 			}
+
 			isPending.current = true;
 			isMouseDown.current = true;
-			if (event instanceof globalThis.TouchEvent) {
-				const touch = event.touches[0];
-				touchStartX.current = touch.clientX;
-				touchStartY.current = touch.clientY;
-			} else if (event instanceof globalThis.MouseEvent) {
-				touchStartX.current = event.clientX;
-				touchStartY.current = event.clientY;
+			isScrolling.current = false;
+
+			// if (event instanceof globalThis.TouchEvent) {
+			// 	const touch = event.touches[0];
+			// 	touchStartX.current = touch.clientX;
+			// 	touchStartY.current = touch.clientY;
+			// } else if (event instanceof globalThis.MouseEvent) {
+			// 	touchStartX.current = event.clientX;
+			// 	touchStartY.current = event.clientY;
+			// }
+
+			const xy = getClientXy(event);
+			if (!xy) return;
+			touchStartX.current = xy.clientX;
+			touchStartY.current = xy.clientY;
+
+			if (
+				event.type.toLowerCase().startsWith("touch") ||
+				event instanceof globalThis.TouchEvent
+			) {
+				isPending.current = false;
+				isDragging.current = true;
+
+				dragStartCallback({ x: xy.clientX, y: xy.clientY });
+				return;
 			}
+
 			//event.preventDefault();
-			setTimeout(() => {
+			dragStartDelayTimer.current = setTimeout(() => {
 				if (!isPending.current || isScrolling.current) return; // 스크롤 중이면 드래그 취소
 				isPending.current = false;
 				isDragging.current = true;
@@ -252,8 +303,15 @@ export const useDragEvents = ({
 
 			if (
 				isPending.current &&
+				(event.type.toLowerCase().startsWith("touch") ||
+					event instanceof globalThis.TouchEvent) &&
 				(deltaX > scrollThreshold || deltaY > scrollThreshold)
 			) {
+				if (dragStartDelayTimer.current) {
+					clearTimeout(dragStartDelayTimer.current);
+					dragStartDelayTimer.current = null;
+				}
+
 				isScrolling.current = true; // 스크롤 중으로 설정
 				isPending.current = false; // 드래그 취소
 				isDragging.current = false;
@@ -268,8 +326,14 @@ export const useDragEvents = ({
 				}
 				dragResumeTimer.current = setTimeout(() => {
 					if (!isMouseDown.current) return;
-					if (dragStartCallback)
-						dragStartCallback({ x: clientX, y: clientY });
+					// if (dragStartCallback)
+					// 	dragStartCallback({ x: clientX, y: clientY });
+					// isPending.current = true;
+					// isScrolling.current = false;
+					// handleStart({ event: _event, dragStartCallback });
+
+					touchStartX.current = clientX;
+					touchStartY.current = clientY;
 					isPending.current = true;
 					isScrolling.current = false;
 					handleStart({ event: _event, dragStartCallback });
@@ -293,8 +357,13 @@ export const useDragEvents = ({
 		}) => {
 			isScrolling.current = false;
 			isMouseDown.current = false;
+
 			if (isPending.current) {
 				isPending.current = false;
+				if (dragStartDelayTimer.current) {
+					clearTimeout(dragStartDelayTimer.current);
+					dragStartDelayTimer.current = null;
+				}
 				return;
 			}
 			const event = _event instanceof Event ? _event : _event.nativeEvent;

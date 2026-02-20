@@ -26,9 +26,9 @@ export interface FlexLayoutChildrenType {
 }
 
 export interface FlexContainerProps extends FlexLayoutChildrenType {
-	readonly fitContent?: FitContent;
-	readonly containerCount?: number;
-	readonly layoutName?: string;
+	// readonly fitContent?: FitContent;
+	// readonly containerCount?: number;
+	// readonly layoutName?: string;
 }
 
 export interface FlexLayoutPanelStyle {

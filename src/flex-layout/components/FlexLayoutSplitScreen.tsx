@@ -16,6 +16,7 @@ import { useFlexLayoutSplitScreen } from "../hooks/useFlexLayoutSplitScreen";
 import {
 	getCurrentSplitScreenComponents,
 	getSplitScreen,
+	removeRootSplitScreen,
 	removeSplitScreenChild,
 	resetRootSplitScreen,
 	setSplitScreen,
@@ -429,9 +430,9 @@ export default function FlexLayoutSplitScreen({
 
 		return () => {
 			subscribe.unsubscribe();
-			resetRootSplitScreen(layoutName);
+			removeRootSplitScreen(layoutName);
 		};
-	}, [layoutName]);
+	}, [layoutName, screenKey, navigationTitle, children, direction]);
 
 	useEffect(() => {
 		const subscribe = dropMovementEventSubject
@@ -652,8 +653,7 @@ export default function FlexLayoutSplitScreen({
 													component: targetComponent!,
 													dropDocumentOutsideOption,
 													screenKey:
-														centerDropTargetComponent[0]
-															.screenKey,
+														dropTargetComponentEvent.screenKey,
 													navigationTitle,
 												},
 											],
@@ -897,28 +897,32 @@ function FlexLayoutSplitScreenChild({
 	const [isEmptyContent, setIsEmptyContent] = useState<boolean>(false);
 	const [activeIndex, setActiveIndex] = useState<number>(0);
 	const centerDropTargetComponentRef = useRef(centerDropTargetComponent);
+	const initialCenterRef = useRef<DropTargetComponent[]>(
+		initialCenterComponents ?? [],
+	);
+
 	const activeIndexRef = useRef(activeIndex);
 	useEffect(() => {
-		const subscribe = getSplitScreen(rootName, `${layoutName}=${screenKey}`)
+		const storeKey = `${layoutName}=${screenKey}`;
+
+		const subscribe = getSplitScreen(rootName, storeKey)
 			.pipe(take(1))
 			.subscribe((layoutInfo) => {
-				setSplitScreen(rootName, `${layoutName}=${screenKey}`, {
-					afterDropTargetComponent:
-						layoutInfo?.afterDropTargetComponent || [],
-					beforeDropTargetComponent:
-						layoutInfo?.beforeDropTargetComponent || [],
-					centerDropTargetComponent:
-						layoutInfo?.centerDropTargetComponent ||
-						initialCenterComponents ||
-						[],
-					direction: layoutInfo?.direction || direction,
+				if (layoutInfo) return;
+
+				setSplitScreen(rootName, storeKey, {
+					afterDropTargetComponent: [],
+					beforeDropTargetComponent: [],
+					centerDropTargetComponent: initialCenterRef.current,
+					direction,
 				});
 			});
 		return () => {
 			removeSplitScreenChild(rootName, `${layoutName}=${screenKey}`);
 			subscribe.unsubscribe();
 		};
-	}, [rootName, layoutName, initialCenterComponents]);
+	}, [rootName, layoutName, screenKey]);
+
 	useEffect(() => {
 		const subscribe = getSplitScreen(rootName, `${layoutName}=${screenKey}`)
 			//.pipe(take(1))
@@ -963,6 +967,7 @@ function FlexLayoutSplitScreenChild({
 
 		return () => {
 			subscribe.unsubscribe();
+			removeRootSplitScreen(layoutName);
 		};
 	}, [rootName, layoutName]);
 
@@ -1452,13 +1457,38 @@ function FlexLayoutSplitScreenChild({
 																					(
 																						prev,
 																					) => {
-																						const result =
+																						const next =
 																							handleRemove(
 																								prev,
 																								item.containerName,
 																								() => {},
 																							);
-																						return result;
+
+																						// store도 같이 업데이트 (닫힌 탭의 ReactElement 참조를 store에서 제거)
+																						const key = `${layoutName}=${screenKey}`;
+																						const current =
+																							getCurrentSplitScreenComponents(
+																								rootName,
+																								key,
+																							) || {
+																								afterDropTargetComponent,
+																								beforeDropTargetComponent,
+																								centerDropTargetComponent:
+																									prev,
+																								direction,
+																							};
+
+																						setSplitScreen(
+																							rootName,
+																							key,
+																							{
+																								...current,
+																								centerDropTargetComponent:
+																									next,
+																							},
+																						);
+
+																						return next;
 																					},
 																				);
 																			}
@@ -1474,6 +1504,9 @@ function FlexLayoutSplitScreenChild({
 																		}
 																	>
 																		<FlexLayoutSplitScreenDragBox
+																			screenKey={
+																				item.screenKey
+																			}
 																			onClick={() => {
 																				setActiveIndex(
 																					index,

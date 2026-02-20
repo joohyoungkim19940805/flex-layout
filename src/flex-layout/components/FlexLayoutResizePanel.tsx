@@ -2,6 +2,7 @@
 
 import type { TouchEvent } from "react";
 import { MouseEvent, useEffect, useRef } from "react";
+import { isResizingSubject } from "../hooks";
 import { setResizePanelRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexDirectionModelType } from "../types/FlexDirectionTypes";
@@ -56,6 +57,7 @@ export default function FlexLayoutResizePanel({
 
 	useEffect(() => {
 		return () => {
+			isResizingSubject.next(false);
 			document.body.style.cursor = "";
 		};
 	}, []);
@@ -80,6 +82,8 @@ export default function FlexLayoutResizePanel({
 		prevTouchEventRef.current = null;
 		totalMovementRef.current = 0;
 
+		isResizingSubject.next(true);
+
 		if (!parentSizeRef.current) return;
 		document.body.style.cursor = flexDirectionModel[direction].resizeCursor;
 	};
@@ -90,6 +94,9 @@ export default function FlexLayoutResizePanel({
 		parentSizeRef.current = 0;
 		totalMovementRef.current = 0;
 		prevTouchEventRef.current = null;
+
+		isResizingSubject.next(false);
+
 		document.body.style.cursor = "";
 	};
 
@@ -246,7 +253,14 @@ export default function FlexLayoutResizePanel({
 				passive: false,
 			});
 		});
-		["mouseup", "touchend"].forEach((eventName) => {
+		[
+			"mouseup",
+			"touchend",
+			"touchcancel", // 터치 제스처 시스템 인터럽트
+			"pointerup", // 범용 포인터 이벤트
+			"pointercancel",
+			"blur", // 윈도우 포커스 아웃 (Alt+Tab 등)
+		].forEach((eventName) => {
 			window.addEventListener(eventName, panelMouseUpEvent);
 		});
 
@@ -254,16 +268,18 @@ export default function FlexLayoutResizePanel({
 			["mousemove", "touchmove"].forEach((eventName) => {
 				window.removeEventListener(eventName, addGlobalMoveEvent);
 			});
-			["mouseup", "touchend"].forEach((eventName) => {
+			[
+				"mouseup",
+				"touchend",
+				"touchcancel", // 터치 제스처 시스템 인터럽트
+				"pointerup", // 범용 포인터 이벤트
+				"pointercancel",
+				"blur", // 윈도우 포커스 아웃 (Alt+Tab 등)
+			].forEach((eventName) => {
 				window.removeEventListener(eventName, panelMouseUpEvent);
 			});
 		};
 	}, []);
-
-	useEffect(() => {
-		if (!panelRef.current) return;
-		setResizePanelRef(layoutName, containerName, panelRef);
-	}, [containerName, layoutName]);
 
 	useEffect(() => {
 		if (!panelRef.current) return;

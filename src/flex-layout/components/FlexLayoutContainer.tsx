@@ -50,10 +50,16 @@ export default function FlexLayoutContainer({
 	const flexContainerRef = useCallback(
 		(node: HTMLDivElement | null) => {
 			flexContainerNodeRef.current = node;
-			if (node !== null) {
-				setContainerRef(layoutName, containerName, { current: node });
+
+			// 마운트: 저장 / 언마운트: 삭제
+			if (node) {
+				setContainerRef(
+					layoutName,
+					containerName,
+					flexContainerNodeRef,
+				);
 			} else {
-				// 컴포넌트가 언마운트될 때 필요한 작업이 있다면 여기에 추가
+				setContainerRef(layoutName, containerName, null);
 			}
 		},
 		[layoutName, containerName],
@@ -68,24 +74,6 @@ export default function FlexLayoutContainer({
 		initialPrevGrow,
 	);
 	const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
-
-	useEffect(() => {
-		if (!flexContainerNodeRef.current) return;
-		setContainerRef(layoutName, containerName, flexContainerNodeRef);
-		return () => {
-			setContainerRef(layoutName, containerName, {
-				current: null,
-			} as any);
-		};
-	}, [containerName, layoutName]);
-
-	useEffect(() => {
-		if (!flexContainerNodeRef.current) return;
-		setContainerRef(layoutName, containerName, flexContainerNodeRef);
-		return () => {
-			setContainerRef(layoutName, containerName, null);
-		};
-	}, [containerName, layoutName]);
 
 	// 클라이언트 마운트 후 sessionStorage에서 grow값을 가져와 state 업데이트 (SSR/Hydration 안정화)
 	useEffect(() => {
@@ -152,7 +140,7 @@ export default function FlexLayoutContainer({
 			!ref.current ||
 			!size ||
 			!fitContent ||
-			//||getGrow(flexContainerRef.current) == 0
+			// getGrow(flexContainerNodeRef.current) == 0 ||
 			isUserResizingRef.current // 사용자가 직접 사이즈 조정 중일 때는 자동 조정 방지
 		)
 			return;
@@ -226,7 +214,7 @@ export default function FlexLayoutContainer({
 			!isFitContent ||
 			!fitContent ||
 			!size ||
-			growState === 0
+			getGrow(flexContainerNodeRef.current) == 0
 		)
 			return;
 

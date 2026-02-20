@@ -15,20 +15,13 @@ function updateScrollStore<T>(subject: BehaviorSubject<T>, newValue: T) {
 		subject.next(newValue);
 	}
 }
-// 동일한지 확인 후 업데이트하는 유틸
-function updateRefStore(store: BehaviorSubject<RefStore>, newState: RefStore) {
-	const prevState = store.getValue();
-	if (!equal(prevState, newState)) {
-		store.next(newState);
-	}
-}
 
 function updateSplitScreenStore(newValue: LayoutSplitScreenState) {
-	const prevValue = layoutSplitScreenStore.getValue();
+	// const prevValue = layoutSplitScreenStore.getValue();
 	// deep-equal 로 비교
-	if (!equal(prevValue, newValue)) {
-		layoutSplitScreenStore.next(newValue);
-	}
+	// if (!equal(prevValue, newValue)) {
+	layoutSplitScreenStore.next(newValue);
+	// }
 }
 
 // 구독 시 이전 상태들을 축적하여 관리
@@ -88,7 +81,7 @@ export const getScrollPosition = (layoutName: string) => {
 };
 export const removeScrollPosition = (layoutName: string) => {
 	const current = scrollPositionsSubject.getValue();
-	const { [layoutName]: _, ...rest } = current; 
+	const { [layoutName]: _, ...rest } = current;
 	updateScrollStore(scrollPositionsSubject, rest);
 };
 
@@ -133,6 +126,13 @@ export const resetRootSplitScreen = (rootName: string) => {
 	updateSplitScreenStore(newStoreValue);
 };
 
+export const removeRootSplitScreen = (rootName: string) => {
+	const current = layoutSplitScreenStore.getValue();
+	if (!current[rootName]) return;
+	const { [rootName]: _, ...rest } = current;
+	updateSplitScreenStore(rest);
+};
+
 export const removeSplitScreenChild = (
 	rootName: string,
 	layoutName: string,
@@ -161,7 +161,7 @@ export const getCurrentSplitScreenComponents = (
 
 export const getSplitScreen = (rootName: string, layoutName: string) => {
 	return layoutSplitScreenStore.pipe(
-		map((splitScreen) => splitScreen[rootName][layoutName]),
+		map((splitScreen) => splitScreen[rootName]?.[layoutName]),
 		distinctUntilChanged((prev, curr) => {
 			// 이전 상태와 현재 상태를 비교하여 동일하면 필터링
 			const filterChildren = (obj: any) => {
@@ -196,20 +196,28 @@ export const setContainerRef = <T extends HTMLElement>(
 	ref: RefObject<T | null> | null,
 ) => {
 	const currentRefs = flexContainerStore.getValue();
-	const updatedLayoutRefs = { ...(currentRefs[layoutName] || {}) };
+	const layoutRefs = currentRefs[layoutName] || {};
 
 	if (ref === null) {
-		delete updatedLayoutRefs[containerName];
-	} else {
-		updatedLayoutRefs[containerName] = ref;
+		if (!(containerName in layoutRefs)) return; //
+		const { [containerName]: _, ...restLayout } = layoutRefs;
+		const next =
+			Object.keys(restLayout).length === 0
+				? (() => {
+						const { [layoutName]: __, ...rest } = currentRefs;
+						return rest;
+					})()
+				: { ...currentRefs, [layoutName]: restLayout };
+		flexContainerStore.next(next);
+		return;
 	}
 
-	const newRefs: RefStore = {
-		...currentRefs,
-		[layoutName]: updatedLayoutRefs,
-	};
+	if (layoutRefs[containerName] === ref) return; // 동일 ref면 skip
 
-	updateRefStore(flexContainerStore, newRefs);
+	flexContainerStore.next({
+		...currentRefs,
+		[layoutName]: { ...layoutRefs, [containerName]: ref },
+	});
 };
 
 export const setResizePanelRef = <T extends HTMLElement>(
@@ -218,20 +226,28 @@ export const setResizePanelRef = <T extends HTMLElement>(
 	ref: RefObject<T | null> | null,
 ) => {
 	const currentRefs = flexResizePanelStore.getValue();
-	const updatedLayoutRefs = { ...(currentRefs[layoutName] || {}) };
+	const layoutRefs = currentRefs[layoutName] || {};
 
 	if (ref === null) {
-		delete updatedLayoutRefs[containerName];
-	} else {
-		updatedLayoutRefs[containerName] = ref;
+		if (!(containerName in layoutRefs)) return; //
+		const { [containerName]: _, ...restLayout } = layoutRefs;
+		const next =
+			Object.keys(restLayout).length === 0
+				? (() => {
+						const { [layoutName]: __, ...rest } = currentRefs;
+						return rest;
+					})()
+				: { ...currentRefs, [layoutName]: restLayout };
+		flexResizePanelStore.next(next);
+		return;
 	}
 
-	const newRefs: RefStore = {
-		...currentRefs,
-		[layoutName]: updatedLayoutRefs,
-	};
+	if (layoutRefs[containerName] === ref) return; // 동일 ref면 skip
 
-	updateRefStore(flexResizePanelStore, newRefs);
+	flexResizePanelStore.next({
+		...currentRefs,
+		[layoutName]: { ...layoutRefs, [containerName]: ref },
+	});
 };
 
 export const getLayoutInfos = (layoutName: string) => {
@@ -247,7 +263,11 @@ export const getLayoutInfos = (layoutName: string) => {
 				resizePanel: resizePanelData,
 			};
 		}),
-		filter((result) => result.container !== null), // 빈 객체 제외
+		filter(
+			(result) =>
+				result.container !== null &&
+				Object.keys(result.container).length > 0,
+		), // 빈 객체 제외
 	);
 };
 

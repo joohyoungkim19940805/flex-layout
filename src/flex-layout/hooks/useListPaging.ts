@@ -160,17 +160,36 @@ export const usePagingHandler = <T>({
 	dataListRef: MutableRefObject<Array<T[] | null>>;
 }) => {
 	const jumpingPageNumberRef = useRef<number | null>(lastCallPageNumber);
-	useEffect(() => {
-		if (jumpingPageNumberRef.current) {
-			setTimeout(() => {
-				jumpingPageNumberRef.current = null;
-			}, 1000);
-		}
-	}, [jumpingPageNumberRef]);
+
 	const paginationScrollIntoViewTarget = useRef<
 		Record<number, HTMLDivElement | null>
 	>({});
 	const pageNumberRef = useRef<number>(lastCallPageNumber);
+
+	const resetJumpTimerIdRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+
+	const clearResetTimer = useCallback(() => {
+		if (resetJumpTimerIdRef.current !== null) {
+			window.clearTimeout(resetJumpTimerIdRef.current);
+			resetJumpTimerIdRef.current = null;
+		}
+	}, []);
+
+	const armResetTimer = useCallback(() => {
+		clearResetTimer();
+		resetJumpTimerIdRef.current = window.setTimeout(() => {
+			jumpingPageNumberRef.current = null;
+			resetJumpTimerIdRef.current = null;
+		}, 1000);
+	}, [clearResetTimer]);
+
+	useEffect(() => {
+		return () => {
+			clearResetTimer();
+		};
+	}, [clearResetTimer]);
 
 	const setPaginationRef = useCallback(
 		(i: number) => (node: HTMLDivElement | null) => {
@@ -213,9 +232,7 @@ export const usePagingHandler = <T>({
 		)
 			return;
 		jumpingPageNumberRef.current = callPageNumber;
-		setTimeout(() => {
-			jumpingPageNumberRef.current = null;
-		}, 1000);
+		armResetTimer();
 		dataCallFetch(callPageNumber);
 	};
 
@@ -241,9 +258,7 @@ export const usePagingHandler = <T>({
 			return;
 		}
 		jumpingPageNumberRef.current = page;
-		setTimeout(() => {
-			jumpingPageNumberRef.current = null;
-		}, 1000);
+		armResetTimer();
 		dataCallFetch(page);
 	};
 	return {

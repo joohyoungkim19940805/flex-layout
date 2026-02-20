@@ -63,6 +63,7 @@ export function useFlexLayoutSplitScreen({
 			y,
 			screenKey,
 		} = dragState;
+
 		const orderName =
 			positionName === "leftBoundary" || positionName === "topBoundary"
 				? "before"
@@ -79,7 +80,10 @@ export function useFlexLayoutSplitScreen({
 			setBoundaryContainerSize(null);
 		}
 
-		if (selfContainerName.startsWith(containerName)) {
+		if (
+			selfContainerName === containerName ||
+			selfContainerName.startsWith(containerName + "_")
+		) {
 			return;
 		}
 
