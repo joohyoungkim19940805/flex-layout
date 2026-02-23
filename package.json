@@ -35,7 +35,10 @@
 		"url": "https://github.com/joohyoungkim19940805/flex-layout/issues"
 	},
 	"files": [
-		"dist"
+		"dist/**/*.js",
+		"dist/**/*.cjs",
+		"dist/**/*.d.ts",
+		"dist/**/*.css"
 	],
 	"sideEffects": [
 		"**/*.css"
@@ -82,7 +85,7 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup && tsc -p tsconfig.build.json && npm run copy:assets",
+		"build": "tsup && npm run copy:assets",
 		"copy:assets": "cpy \"src/**/*.css\" \"dist\"",
 		"dev": "tsup --watch",
 		"prepack": "npm run build",

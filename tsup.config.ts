@@ -5,7 +5,8 @@ export default defineConfig({
 	entry: ["src/**/*.ts", "src/**/*.tsx"],
 	format: ["esm", "cjs"],
 	clean: true,
-	sourcemap: true,
+	sourcemap: false,
+	minify: true,
 	target: "es2020",
 
 	bundle: false,
