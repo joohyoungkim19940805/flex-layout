@@ -51,6 +51,25 @@ export interface DragStateResultType extends DragStateType {
 	positionName: PositionName;
 	isOver: boolean;
 }
+
+export type ResizeDragEvent =
+	| {
+			type: "START";
+			sessionId: string;
+			targets: string[]; // resize panel key list
+			cursor?: string;
+	  }
+	| {
+			type: "MOVE";
+			sessionId: string;
+			movementX: number;
+			movementY: number;
+	  }
+	| {
+			type: "END";
+			sessionId: string;
+	  };
+
 export const dragStateSubject = new Subject<DragStateType>();
 /**
  * @deprecated Use `dragStateSubject` instead. This alias will be removed in a future release.
@@ -58,6 +77,9 @@ export const dragStateSubject = new Subject<DragStateType>();
 export const dragState = dragStateSubject;
 
 export const isResizingSubject = new BehaviorSubject<boolean>(false);
+
+export const resizeDragSubject: Subject<ResizeDragEvent> =
+	new Subject<ResizeDragEvent>();
 
 const filterChildren = (obj: any) => {
 	// 객체 복사 후 children 속성 제거
