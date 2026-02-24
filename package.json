@@ -85,7 +85,7 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup && npm run copy:assets",
+		"build": "tsup && tsc -p tsconfig.build.json && npm run copy:assets",
 		"copy:assets": "cpy \"src/**/*.css\" \"dist\"",
 		"dev": "tsup --watch",
 		"prepack": "npm run build",
