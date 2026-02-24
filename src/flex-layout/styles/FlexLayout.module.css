@@ -118,46 +118,25 @@
 			visibility: hidden;
 			transition: all 1s;
 		}
-		&.bottom-cylinder {
-			&::after {
-				border-bottom-left-radius: 15px;
-				border-bottom-right-radius: 15px;
-				bottom: 100%;
-			}
-		}
-		&.bottom-cylinder-reverse {
-			&::after {
-				border-top-left-radius: 15px;
-				border-top-right-radius: 15px;
-				bottom: 100%;
-			}
-		}
-		&.top-cylinder {
-			border-bottom-left-radius: 15px;
-			border-bottom-right-radius: 15px;
-		}
-		&.right-cylinder {
-			&::after {
-				border-top-right-radius: 15px;
-				border-bottom-right-radius: 15px;
-				left: 100%;
-			}
-		}
-		&.left-cylinder {
-			&::after {
-				right: 100%;
-			}
-		}
+
+		&.top-cylinder,
+		&.top-cylinder-reverse,
 		&.bottom-cylinder,
 		&.bottom-cylinder-reverse,
-		&.top-cylinder,
 		&.left-cylinder,
-		&.right-cylinder {
+		&.left-cylinder-reverse,
+		&.right-cylinder,
+		&.right-cylinder-reverse {
+			/* 실린더 크기(기존 1.1rem 유지) */
+			--cyl-size: 1.1rem;
+			/* 선 방향 기준 길이(기존 60% 유지) */
+			--cyl-span: 60%;
+
 			&::after {
-				background-color: hsla(0, 0%, 54%, 0.32);
-				content: " ";
+				content: "";
 				position: absolute;
 				z-index: 3002;
+				background-color: hsla(0, 0%, 54%, 0.32);
 			}
 			&:hover,
 			&:hover::after,
@@ -167,23 +146,101 @@
 				transition: background-color 1s;
 			}
 		}
-		&.bottom-cylinder,
+
+		/* 수평 패널(가로 선)용 실린더: 위/아래로 튀어나오게 */
 		&.top-cylinder,
+		&.top-cylinder-reverse,
+		&.bottom-cylinder,
 		&.bottom-cylinder-reverse {
 			&::after {
-				height: 1.1rem;
-				width: 60%;
-			}
-			&:not(.bottom-cylinder-reverse)::after {
-				top: 0;
+				height: var(--cyl-size);
+				width: var(--cyl-span);
+
+				/* transform 없이 가운데 정렬: left 20% + width 60% */
+				left: 20%;
 			}
 		}
-		&.left-cylinder,
-		&.right-cylinder {
+
+		/* 위로 튀어나오는(top) */
+		&.top-cylinder,
+		&.top-cylinder-reverse {
 			&::after {
-				width: 1.1rem;
-				height: 60%;
+				bottom: 100%;
 			}
+		}
+		/* 아래로 튀어나오는(bottom) */
+		&.bottom-cylinder,
+		&.bottom-cylinder-reverse {
+			&::after {
+				top: 100%;
+			}
+		}
+
+		/* 라운딩(기본/리버스) */
+		&.top-cylinder::after {
+			border-top-left-radius: 15px;
+			border-top-right-radius: 15px;
+		}
+		&.top-cylinder-reverse::after {
+			border-bottom-left-radius: 15px;
+			border-bottom-right-radius: 15px;
+		}
+
+		&.bottom-cylinder::after {
+			border-bottom-left-radius: 15px;
+			border-bottom-right-radius: 15px;
+		}
+		&.bottom-cylinder-reverse::after {
+			border-top-left-radius: 15px;
+			border-top-right-radius: 15px;
+		}
+
+		/* 수직 패널(세로 선)용 실린더: 좌/우로 튀어나오게 */
+		&.left-cylinder,
+		&.left-cylinder-reverse,
+		&.right-cylinder,
+		&.right-cylinder-reverse {
+			&::after {
+				width: var(--cyl-size);
+				height: var(--cyl-span);
+
+				/* transform 없이 가운데 정렬: top 20% + height 60% */
+				top: 20%;
+			}
+		}
+
+		/* 오른쪽으로 튀어나오는(right) */
+		&.right-cylinder,
+		&.right-cylinder-reverse {
+			&::after {
+				left: 100%;
+			}
+		}
+		/* 왼쪽으로 튀어나오는(left) */
+		&.left-cylinder,
+		&.left-cylinder-reverse {
+			&::after {
+				right: 100%;
+			}
+		}
+
+		/* 라운딩(기본/리버스) */
+		&.right-cylinder::after {
+			border-top-right-radius: 15px;
+			border-bottom-right-radius: 15px;
+		}
+		&.right-cylinder-reverse::after {
+			border-top-left-radius: 15px;
+			border-bottom-left-radius: 15px;
+		}
+
+		&.left-cylinder::after {
+			border-top-left-radius: 15px;
+			border-bottom-left-radius: 15px;
+		}
+		&.left-cylinder-reverse::after {
+			border-top-right-radius: 15px;
+			border-bottom-right-radius: 15px;
 		}
 	}
 }

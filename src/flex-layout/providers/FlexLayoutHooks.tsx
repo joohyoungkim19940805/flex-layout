@@ -313,55 +313,82 @@ export const useContainerSize = (containerName: string) => {
 	return { size };
 };
 
-export const useDoubleClick = (
+const getResizePanelClickEvent$ = (containerName: string) => {
+	return getResizePanelRef({ containerName }).pipe(
+		filter(
+			(resizePanelref) =>
+				resizePanelref != undefined &&
+				resizePanelref.current != undefined,
+		),
+		switchMap((resizePanelref) => {
+			if (!resizePanelref || !resizePanelref.current) return EMPTY;
+			return fromEvent(resizePanelref.current, "click");
+		}),
+	);
+};
+
+export const useDoubleClickToggle = (
 	containerName: string,
 	opt: ContainerStateRequest,
 ) => {
 	const [isOpen, setIsOpen] = useState<boolean>();
 	const [isDoubleClick, setIsDoubleClick] = useState<boolean>();
+
 	useEffect(() => {
-		const resizePanelClickEvent = getResizePanelRef({
-			containerName,
-		}).pipe(
-			filter(
-				(resizePanelref) =>
-					resizePanelref != undefined &&
-					resizePanelref.current != undefined,
-			),
-			//take(1),
-			switchMap((resizePanelref) => {
-				if (!resizePanelref || !resizePanelref.current) return EMPTY;
-				return fromEvent(resizePanelref.current, "click");
-			}),
-		);
+		const resizePanelClickEvent = getResizePanelClickEvent$(containerName);
+
 		const subscribe = resizePanelClickEvent
 			.pipe(
 				buffer(resizePanelClickEvent.pipe(debounceTime(500))),
 				filter((clickEventArray) => clickEventArray.length >= 2),
-				map((events) => {
-					containerOpenCloseSubjectMap[containerName].next({
-						...opt,
-						openOption: {
-							...opt.openOption,
-							isPrevSizeOpen: false,
-						},
-						onClose: () => {
-							if (opt.onClose) opt.onClose();
-							setIsOpen(false);
-							setIsDoubleClick(true);
-						},
-						onOpen: () => {
-							if (opt.onOpen) opt.onOpen();
-							setIsOpen(true);
-							setIsDoubleClick(true);
-						},
-					});
-				}),
 			)
-			.subscribe();
+			.subscribe(() => {
+				containerOpenCloseSubjectMap[containerName].next({
+					...opt,
+					openOption: {
+						...opt.openOption,
+						isPrevSizeOpen: false,
+					},
+					onClose: () => {
+						if (opt.onClose) opt.onClose();
+						setIsOpen(false);
+						setIsDoubleClick(true);
+					},
+					onOpen: () => {
+						if (opt.onOpen) opt.onOpen();
+						setIsOpen(true);
+						setIsDoubleClick(true);
+					},
+				});
+			});
+
 		return () => {
 			subscribe.unsubscribe();
 		};
 	}, [containerName]);
+
 	return { isOpen, isDoubleClick, setIsDoubleClick };
+};
+
+export const useDoubleClick = (containerName: string) => {
+	const [isDoubleClick, setIsDoubleClick] = useState<boolean>();
+
+	useEffect(() => {
+		const resizePanelClickEvent = getResizePanelClickEvent$(containerName);
+
+		const subscribe = resizePanelClickEvent
+			.pipe(
+				buffer(resizePanelClickEvent.pipe(debounceTime(500))),
+				filter((clickEventArray) => clickEventArray.length >= 2),
+			)
+			.subscribe(() => {
+				setIsDoubleClick(true);
+			});
+
+		return () => {
+			subscribe.unsubscribe();
+		};
+	}, [containerName]);
+
+	return { isDoubleClick, setIsDoubleClick };
 };

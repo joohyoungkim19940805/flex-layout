@@ -34,7 +34,7 @@ const flexDirectionModel = {
 	} as FlexDirectionModelType,
 } as Record<string, FlexDirectionModelType>;
 
-const CROSS_SLOP = 16;
+const CROSS_SLOP = 4;
 const getPanelsNearPoint = (
 	clientX: number,
 	clientY: number,
@@ -42,7 +42,6 @@ const getPanelsNearPoint = (
 	baseDir?: string,
 ) => {
 	// 너무 멀리까지 퍼지면 엉뚱한 패널까지 잡힐 수 있어서 적당히 제한
-	const SPREAD = CROSS_SLOP;
 
 	const map = new Map<
 		string,
@@ -74,14 +73,14 @@ const getPanelsNearPoint = (
 	// 1) 포인터 주변(기본)
 	[
 		[0, 0],
-		[-SPREAD, 0],
-		[SPREAD, 0],
-		[0, -SPREAD],
-		[0, SPREAD],
-		[-SPREAD, -SPREAD],
-		[SPREAD, -SPREAD],
-		[-SPREAD, SPREAD],
-		[SPREAD, SPREAD],
+		[-CROSS_SLOP, 0],
+		[CROSS_SLOP, 0],
+		[0, -CROSS_SLOP],
+		[0, CROSS_SLOP],
+		[-CROSS_SLOP, -CROSS_SLOP],
+		[CROSS_SLOP, -CROSS_SLOP],
+		[-CROSS_SLOP, CROSS_SLOP],
+		[CROSS_SLOP, CROSS_SLOP],
 	].forEach(([dx, dy]) => collect(clientX + dx, clientY + dy));
 
 	// 2) "내 패널" 기준: 패널 양끝(경계 바깥) 가상 공간에 찍기
@@ -95,34 +94,41 @@ const getPanelsNearPoint = (
 					? rect.height
 					: 1;
 
-		// ✅ 패널 두께 기반으로: 한 번에 패널을 "건드릴" 수 있는 간격
-		// (두께가 얇을수록 촘촘히)
+		// 한 번에 패널을 건드릴 수 있는 간격
 		const STEP = Math.max(1, Math.ceil(thickness / 2));
 
-		// ✅ 패널 바깥으로 나가는 거리(가상 공간): 두께에 비례
-		const PAD = Math.ceil(thickness * 2);
-
-		// ✅ 스윕 범위: CROSS_SLOP + 두께 보정 (화면/분할 수 몰라도 동작)
+		//  스윕 범위: CROSS_SLOP + 두께 보정 (화면/분할 수 몰라도 동작)
 		const RANGE = Math.ceil(CROSS_SLOP + thickness * 2);
+		//  가상공간 폭
+		const BAND = Math.max(CROSS_SLOP, Math.ceil(thickness * 2));
+
+		// 가상공간 내부를 3점(가장 안쪽/중앙/가장 바깥쪽)으로 샘플링
+		// (BAND가 작으면 중복/0 방지)
+		const OFFSETS = Array.from(
+			new Set([1, Math.floor(BAND / 2), Math.max(1, BAND - 1)]),
+		);
 
 		if (baseDir === "row") {
-			// 세로 패널: 좌/우 가상공간에서 y 스윕 (가로 패널 주움)
+			// 세로 패널: 좌/우 가상공간에서 y 스윕
 			for (let d = -RANGE; d <= RANGE; d += STEP) {
-				collect(rect.left - PAD, clientY + d);
-				collect(rect.right + PAD, clientY + d);
+				for (const off of OFFSETS) {
+					collect(rect.left - off, clientY + d);
+					collect(rect.right + off, clientY + d);
+				}
 			}
 		} else if (baseDir === "column") {
-			// 가로 패널: 위/아래 가상공간에서 x 스윕 (세로 패널 주움)
+			// 가로 패널: 위/아래 가상공간에서 x 스윕
 			for (let d = -RANGE; d <= RANGE; d += STEP) {
-				collect(clientX + d, rect.top - PAD);
-				collect(clientX + d, rect.bottom + PAD);
+				for (const off of OFFSETS) {
+					collect(clientX + d, rect.top - off);
+					collect(clientX + d, rect.bottom + off);
+				}
 			}
 		}
 	}
 
-	// 3) "정중앙 십자(4분할)" 핵심:
-	//    교차축(수직/수평) 패널이 발견되면, 그 패널의 경계 바깥(가상 공간)으로 다시 찍어서
-	//    반대편(다른 컬럼/다른 로우)의 "같은 방향 패널"까지 같이 주워온다.
+	// 교차축(수직/수평) 패널이 발견되면, 그 패널의 경계 바깥을 가상 공간 기준으로 찍어서
+	// 반대편(다른 컬럼/다른 로우)의 같은 방향 패널까지 같이 주워온다.
 	if (baseDir) {
 		const current = [...map.values()];
 		const perps = current.filter((p) => p.dir && p.dir !== baseDir);
@@ -134,27 +140,124 @@ const getPanelsNearPoint = (
 					? r.width
 					: perp.dir === "column"
 						? r.height
-						: 4;
+						: 1;
 
 			const STEP2 = Math.max(1, Math.ceil(perpThickness / 2));
-			const PAD2 = Math.ceil(perpThickness * 2);
 			const RANGE2 = Math.ceil(CROSS_SLOP + perpThickness * 2);
 
+			// ✅ "가상영역 폭"을 중앙/끝 어디를 찍든 커버하도록 3점 샘플링
+			// (CROSS_SLOP을 가상영역 크기로 존중 + 두께가 더 크면 두께에 맞춰 확장)
+			const BAND2 = Math.max(CROSS_SLOP, Math.ceil(perpThickness * 2));
+
+			// 가상영역 내부를 [가장 안쪽, 중앙, 가장 바깥쪽] 3점으로 샘플링
+			const OFFSETS2 = Array.from(
+				new Set([1, Math.floor(BAND2 / 2), Math.max(1, BAND2 - 1)]),
+			);
+
 			if (baseDir === "column" && perp.dir === "row") {
+				// baseDir=column(가로 패널) 상태에서 perp=row(세로 패널)을 찾았다면
+				// 세로 패널의 좌/우 가상공간을 y 스윕하면서 찍는다
 				for (let d = -RANGE2; d <= RANGE2; d += STEP2) {
-					collect(r.left - PAD2, clientY + d);
-					collect(r.right + PAD2, clientY + d);
+					for (const off of OFFSETS2) {
+						collect(r.left - off, clientY + d);
+						collect(r.right + off, clientY + d);
+					}
 				}
 			} else if (baseDir === "row" && perp.dir === "column") {
+				// baseDir=row(세로 패널) 상태에서 perp=column(가로 패널)을 찾았다면
+				// 가로 패널의 위/아래 가상공간을 x 스윕하면서 찍는다
 				for (let d = -RANGE2; d <= RANGE2; d += STEP2) {
-					collect(clientX + d, r.top - PAD2);
-					collect(clientX + d, r.bottom + PAD2);
+					for (const off of OFFSETS2) {
+						collect(clientX + d, r.top - off);
+						collect(clientX + d, r.bottom + off);
+					}
 				}
 			}
 		}
 	}
 
 	return [...map.values()];
+};
+const parseCSSLen = (v: string, axisSize: number) => {
+	if (!v) return null;
+	if (v === "auto") return null;
+	if (v.endsWith("px")) {
+		const n = parseFloat(v);
+		return Number.isFinite(n) ? n : null;
+	}
+	if (v.endsWith("%")) {
+		const n = parseFloat(v);
+		return Number.isFinite(n) ? (axisSize * n) / 100 : null;
+	}
+	// "0" 같은 케이스
+	const n = parseFloat(v);
+	return Number.isFinite(n) ? n : null;
+};
+
+const isPointInRect = (
+	x: number,
+	y: number,
+	r: { left: number; top: number; right: number; bottom: number },
+) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+
+const getAfterRect = (panelEl: HTMLElement) => {
+	const base = panelEl.getBoundingClientRect();
+	const s = getComputedStyle(panelEl, "::after");
+
+	// content 없으면 pseudo 박스 없음
+	if (!s || s.content === "none" || s.content === "normal") return null;
+	if (s.display === "none" || s.visibility === "hidden") return null;
+
+	const w = parseCSSLen(s.width, base.width);
+	const h = parseCSSLen(s.height, base.height);
+	if (!w || !h) return null;
+
+	const leftVal = parseCSSLen(s.left, base.width);
+	const rightVal = parseCSSLen(s.right, base.width);
+	const topVal = parseCSSLen(s.top, base.height);
+	const bottomVal = parseCSSLen(s.bottom, base.height);
+
+	let left = base.left;
+	if (leftVal !== null) left = base.left + leftVal;
+	else if (rightVal !== null) left = base.right - rightVal - w;
+
+	let top = base.top;
+	if (topVal !== null) top = base.top + topVal;
+	else if (bottomVal !== null) top = base.bottom - bottomVal - h;
+
+	return { left, top, right: left + w, bottom: top + h };
+};
+
+// ✅ 핵심: "실린더(::after) 위"면 false(=교차 금지), "선(코어) 위/근처"면 true
+const isPointerOnPanelCore = (
+	clientX: number,
+	clientY: number,
+	panelEl: HTMLElement,
+	baseDir: string,
+	CROSS_SLOP: number,
+) => {
+	const base = panelEl.getBoundingClientRect();
+
+	// 1) ::after 박스(실린더)가 있으면, 그 위는 무조건 "코어 아님"
+	const afterRect = getAfterRect(panelEl);
+	if (afterRect && isPointInRect(clientX, clientY, afterRect)) {
+		return false;
+	}
+
+	// 2) 코어 판정은 너무 타이트하지 않게: 선 두께 + CROSS_SLOP로 패딩
+	const thickness =
+		baseDir === "row" ? base.width : baseDir === "column" ? base.height : 1;
+
+	const pad = Math.max(CROSS_SLOP, Math.ceil(thickness));
+
+	// row(세로 선)은 x로 코어 판정, column(가로 선)은 y로 코어 판정
+	if (baseDir === "row") {
+		return clientX >= base.left - pad && clientX <= base.right + pad;
+	}
+	if (baseDir === "column") {
+		return clientY >= base.top - pad && clientY <= base.bottom + pad;
+	}
+	return true;
 };
 export default function FlexLayoutResizePanel({
 	direction,
@@ -407,34 +510,39 @@ export default function FlexLayoutResizePanel({
 		const pos = getClientXy(nativeEv);
 		if (!pos) return;
 
-		// (1) 겹친 resize panel들 탐색 (CROSS_SLOP 반경으로 러프하게)
+		//  겹친 resize panel들 탐색
 		const myDir = directionRef.current;
-		const nearPanels = getPanelsNearPoint(
+
+		//  실린더 위면 교차 판정 금지
+		const coreHit = isPointerOnPanelCore(
 			pos.clientX,
 			pos.clientY,
 			panelRef.current,
 			myDir,
+			CROSS_SLOP,
 		);
 
-		// (2) "십자가" 케이스: 자기 자신 + (방향이 다른) 겹친 패널 1개만 추가
-		const perpendicularPanels = nearPanels.filter(
-			(p) => p.key !== panelKey && p.dir && p.dir !== myDir,
-		);
+		const nearPanels = coreHit
+			? getPanelsNearPoint(
+					pos.clientX,
+					pos.clientY,
+					panelRef.current,
+					myDir,
+				)
+			: [{ el: panelRef.current, key: panelKey, dir: myDir }];
 
 		const targetsSet = new Set<string>([panelKey]);
-		perpendicularPanels.forEach((p) => targetsSet.add(p.key));
-
+		nearPanels.forEach((p) => targetsSet.add(p.key));
 		const targets = [...targetsSet];
 
-		const sessionId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-
-		// ✅ 교차면 "+" 커서 (진짜 + 모양)
+		// 교차면 + 커서
 		const cursor =
-			targets.length >= 2
+			coreHit && targets.length >= 2
 				? "move"
 				: flexDirectionModel[myDir].resizeCursor;
 
-		// (3) START 브로드캐스트
+		const sessionId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
 		resizeDragSubject.next({
 			type: "START",
 			sessionId,
@@ -442,7 +550,6 @@ export default function FlexLayoutResizePanel({
 			cursor,
 		});
 
-		// (4) 글로벌 move/up 바인딩 (이 패널이 initiator)
 		globalCleanupRef.current?.();
 
 		let prevX = pos.clientX;
@@ -543,22 +650,35 @@ export default function FlexLayoutResizePanel({
 		if (hoverRafRef.current) cancelAnimationFrame(hoverRafRef.current);
 		hoverRafRef.current = requestAnimationFrame(() => {
 			const myDir = directionRef.current;
+
+			// 실린더위면 교차 커서/교차 하이라이트 금지
+			const coreHit = isPointerOnPanelCore(
+				e.clientX,
+				e.clientY,
+				panelRef.current!,
+				myDir,
+				CROSS_SLOP,
+			);
+
+			if (!coreHit) {
+				panelRef.current!.style.cursor = "";
+				clearCrossHoverMark();
+				return;
+			}
+
 			const nearPanels = getPanelsNearPoint(
 				e.clientX,
 				e.clientY,
 				panelRef.current,
 				myDir,
 			);
-			// 내 방향과 다른 패널(수직 패널)들
+
 			const perpendicularPanels = nearPanels
 				.filter((p) => p.dir && p.dir !== myDir)
 				.map((p) => p.el);
 
-			// ✅ 교차면 "+" 커서 (진짜 + 모양)
 			panelRef.current!.style.cursor =
 				perpendicularPanels.length > 0 ? "move" : "";
-
-			// ✅ 상대 교차선도 파란 highlight 되게
 			applyCrossHoverMark(perpendicularPanels);
 		});
 	};

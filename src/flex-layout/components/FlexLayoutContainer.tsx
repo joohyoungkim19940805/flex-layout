@@ -214,7 +214,8 @@ export default function FlexLayoutContainer({
 			!isFitContent ||
 			!fitContent ||
 			!size ||
-			getGrow(flexContainerNodeRef.current) == 0
+			getGrow(flexContainerNodeRef.current) == 0 ||
+			isUserResizingRef.current
 		)
 			return;
 
