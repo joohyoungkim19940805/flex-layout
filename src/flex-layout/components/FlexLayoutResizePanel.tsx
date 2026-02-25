@@ -679,6 +679,7 @@ export default function FlexLayoutResizePanel({
 
 			panelRef.current!.style.cursor =
 				perpendicularPanels.length > 0 ? "move" : "";
+
 			applyCrossHoverMark(perpendicularPanels);
 		});
 	};

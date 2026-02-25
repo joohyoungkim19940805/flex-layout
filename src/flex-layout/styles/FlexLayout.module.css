@@ -13,7 +13,8 @@
 	&[data-direction="column"] {
 		flex-direction: column;
 		& > .flex-resize-panel {
-			height: 4px;
+			height: 1px;
+			min-height: 1px;
 			width: auto;
 			cursor: ns-resize;
 			&:hover > .hover,
@@ -36,7 +37,8 @@
 	&[data-direction="row"] {
 		flex-direction: row;
 		& > .flex-resize-panel {
-			width: 4px;
+			width: 1px;
+			min-width: 1px;
 			height: auto;
 			cursor: ew-resize;
 			&:hover > .hover,
@@ -75,7 +77,7 @@
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		flex: 0 0 0.1%;
+		flex: 0 0 1px;
 		position: relative;
 		-moz-user-select: -moz-none;
 		-khtml-user-select: none;

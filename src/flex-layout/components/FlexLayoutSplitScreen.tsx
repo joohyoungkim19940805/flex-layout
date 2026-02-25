@@ -339,6 +339,21 @@ export type FlexLayoutSplitScreenProps = {
 	navigationTitle: string;
 	dropDocumentOutsideOption?: DropDocumentOutsideOption;
 	screenKey?: string;
+
+	/**
+	 * true = children이 바뀌면 store 리셋/삭제
+	 * false = 분할 상태 유지 및 children 변경 시 center 컴포넌트만 store에 덮어써서 최신화
+	 * default = true
+	 */
+	isResetOnChildrenChange?: boolean;
+
+	/**
+	 * FlexLayoutSplitScreen 컴포넌트가 화면에서 완전히 사라질 때 store를 같이 지울지 말지 선택
+	 * true = FlexLayoutSplitScreen의 컴포넌트 생명주기와 store의 생명주기 동기화
+	 * false = FlexLayoutSplitScreen의 컴포넌트가 언마운트되어도 나중에 다시 페이지에 돌아왔을 때 복원가능해야 하는 경우
+	 * default = true
+	 */
+	isRemoveStoreOnUnmount?: boolean;
 };
 
 export default function FlexLayoutSplitScreen({
@@ -348,6 +363,9 @@ export default function FlexLayoutSplitScreen({
 	navigationTitle,
 	dropDocumentOutsideOption,
 	screenKey,
+
+	isResetOnChildrenChange = true,
+	isRemoveStoreOnUnmount = true,
 }: FlexLayoutSplitScreenProps) {
 	const {
 		direction,
@@ -371,17 +389,15 @@ export default function FlexLayoutSplitScreen({
 	});
 
 	useEffect(() => {
-		resetRootSplitScreen(layoutName);
-		const subscribe = getSplitScreen(layoutName, layoutName)
-			//.pipe(take(1))
-			.subscribe((layoutInfo) => {
+		// resetOnChildrenChange가 true면, mount 시점에도 초기화(기존 동작)
+		// false면 mount 시점에는 기존 store가 있으면 유지 (Next에서 유지 목적)
+		if (isResetOnChildrenChange) {
+			resetRootSplitScreen(layoutName);
+		}
+
+		const sub = getSplitScreen(layoutName, layoutName).subscribe(
+			(layoutInfo) => {
 				if (layoutInfo) {
-					// console.log(
-					//     'layoutInfo:::',
-					//     layoutInfo,
-					//     layoutName,
-					//     containerName
-					// );
 					setBeforeDropTargetComponent([
 						...layoutInfo.beforeDropTargetComponent,
 					]);
@@ -392,47 +408,119 @@ export default function FlexLayoutSplitScreen({
 						...layoutInfo.centerDropTargetComponent,
 					]);
 					setDirection(layoutInfo.direction);
+
 					if (
 						layoutInfo.beforeDropTargetComponent.length !== 0 ||
 						layoutInfo.afterDropTargetComponent.length !== 0
 					) {
 						setIsSplit(true);
 					}
-				} else {
-					// const screenKey = Array.from(
-					//     window.crypto.getRandomValues(new Uint32Array(16)),
-					//     e => e.toString(32).padStart(2, '0')
-					// ).join('');
-					setSplitScreen(layoutName, layoutName, {
-						afterDropTargetComponent: [],
-						beforeDropTargetComponent: [],
-						centerDropTargetComponent: [
-							{
-								containerName,
-								component: children,
-								navigationTitle,
-								dropDocumentOutsideOption,
-								screenKey: screenKey
-									? screenKey
-									: Array.from(
-											window.crypto.getRandomValues(
-												new Uint32Array(16),
-											),
-											(e) =>
-												e.toString(32).padStart(2, "0"),
-										).join(""),
-							},
-						],
-						direction: direction,
-					});
+					return;
 				}
-			});
+
+				// store가 없으면 초기 생성
+				setSplitScreen(layoutName, layoutName, {
+					afterDropTargetComponent: [],
+					beforeDropTargetComponent: [],
+					centerDropTargetComponent: [
+						{
+							containerName,
+							component: children,
+							navigationTitle,
+							dropDocumentOutsideOption,
+							screenKey:
+								screenKey ??
+								Array.from(
+									window.crypto.getRandomValues(
+										new Uint32Array(16),
+									),
+									(e) => e.toString(32).padStart(2, "0"),
+								).join(""),
+						},
+					],
+					direction,
+				});
+			},
+		);
 
 		return () => {
-			subscribe.unsubscribe();
-			removeRootSplitScreen(layoutName);
+			sub.unsubscribe();
+			if (isRemoveStoreOnUnmount) {
+				removeRootSplitScreen(layoutName);
+			}
 		};
-	}, [layoutName, screenKey, navigationTitle, children, direction]);
+	}, [layoutName]);
+
+	useEffect(() => {
+		if (isResetOnChildrenChange) {
+			return;
+		}
+
+		const current = getCurrentSplitScreenComponents(layoutName, layoutName);
+		if (!current || current.centerDropTargetComponent.length === 0) return;
+
+		// 루트 center(보통 1개)만 업데이트. (분할 상태/다른 pane는 유지)
+		const rootCenter = current.centerDropTargetComponent[0];
+
+		// screenKey가 다르면 “다른 루트”로 간주하고 덮어쓰지 않는 편이 안전
+		const expectedKey = screenKey ?? rootCenter.screenKey;
+		if (rootCenter.screenKey !== expectedKey) return;
+
+		const nextRootCenter = {
+			...rootCenter,
+			component: children,
+			navigationTitle,
+			dropDocumentOutsideOption,
+		};
+
+		// 동일하면 setSplitScreen 호출하지 않음(불필요한 rerender/loop 방지)
+		if (
+			rootCenter.component === nextRootCenter.component &&
+			rootCenter.navigationTitle === nextRootCenter.navigationTitle &&
+			rootCenter.dropDocumentOutsideOption ===
+				nextRootCenter.dropDocumentOutsideOption
+		) {
+			return;
+		}
+
+		setSplitScreen(layoutName, layoutName, {
+			...current,
+			centerDropTargetComponent: [nextRootCenter],
+		});
+
+		const rootTabKey = rootCenter.screenKey; // 라우트(children) 탭의 고유키
+
+		const childKey = `${layoutName}_center=${rootTabKey}`;
+		const child = getCurrentSplitScreenComponents(layoutName, childKey);
+
+		if (child?.centerDropTargetComponent?.length) {
+			const idx = child.centerDropTargetComponent.findIndex(
+				(t) => t.screenKey === rootTabKey,
+			);
+
+			if (idx !== -1) {
+				const nextList = [...child.centerDropTargetComponent];
+				nextList[idx] = {
+					...nextList[idx],
+					component: children,
+					navigationTitle,
+					dropDocumentOutsideOption,
+				};
+
+				setSplitScreen(layoutName, childKey, {
+					...child,
+					centerDropTargetComponent: nextList,
+				});
+			}
+		}
+	}, [
+		isResetOnChildrenChange,
+		layoutName,
+		children,
+		navigationTitle,
+		dropDocumentOutsideOption,
+		screenKey,
+	]);
 
 	useEffect(() => {
 		const subscribe = dropMovementEventSubject
