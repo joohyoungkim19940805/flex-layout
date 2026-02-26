@@ -2,6 +2,7 @@
 
 export { default as FlexLayout } from "./FlexLayout";
 export { default as FlexLayoutContainer } from "./FlexLayoutContainer";
+export { default as FlexLayoutDynamicHeight } from "./FlexLayoutDynamicHeight";
 export { default as FlexLayoutResizePanel } from "./FlexLayoutResizePanel";
 export { default as FlexLayoutSplitScreen } from "./FlexLayoutSplitScreen";
 export { default as FlexLayoutSplitScreenDragBox } from "./FlexLayoutSplitScreenDragBox";

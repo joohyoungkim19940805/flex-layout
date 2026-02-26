@@ -28,7 +28,7 @@ import FlexLayoutSplitScreenDragBox, {
 	DropDocumentOutsideOption,
 } from "./FlexLayoutSplitScreenDragBox";
 
-import equal from "fast-deep-equal";
+import equal from "fast-deep-equal/react";
 import { distinctUntilChanged, take } from "rxjs";
 import FlexLayoutSplitScreenDragBoxContainer from "./FlexLayoutSplitScreenDragBoxContainer";
 import FlexLayoutSplitScreenDragBoxItem from "./FlexLayoutSplitScreenDragBoxItem";

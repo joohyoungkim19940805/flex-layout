@@ -2,9 +2,17 @@
 	display: flex;
 	height: 100%;
 	width: 100%;
-	overflow: auto;
 	overflow-wrap: revert;
 	position: relative;
+	--flex-z-resize: 11;
+	--flex-z-resize-hover: 12;
+	--flex-z-resize-cylinder: 13;
+	&[data-scroll-mode="layout"] {
+		overflow: auto;
+	}
+	&[data-scroll-mode="window"] {
+		overflow: visible;
+	}
 	/* -ms-overflow-style: none;
     scrollbar-width: none; */
 	/* &::-webkit-scrollbar {
@@ -60,6 +68,10 @@
 	& > .flex-container {
 		overflow: hidden;
 		box-sizing: border-box;
+		&[data-is_sticky="true"] {
+			position: sticky;
+			z-index: calc(var(--flex-z-resize) + 1);
+		}
 		&[data-is_resize_panel="true"] {
 			flex: 1 1 0%;
 		}
@@ -73,7 +85,7 @@
 	}
 	& .flex-resize-panel {
 		background-color: rgb(115 115 115);
-		z-index: 1001;
+		z-index: var(--flex-z-resize);
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -101,7 +113,7 @@
 		& > .hover[data-is_hover],
 		&:active > .hover {
 			background-color: #0066ffb5;
-			z-index: 3002;
+			z-index: var(--flex-z-resize-hover);
 			position: absolute;
 			display: block;
 			opacity: 1;
@@ -137,7 +149,7 @@
 			&::after {
 				content: "";
 				position: absolute;
-				z-index: 3002;
+				z-index: var(--flex-z-resize-cylinder);
 				background-color: hsla(0, 0%, 54%, 0.32);
 			}
 			&:hover,
@@ -333,7 +345,7 @@
 	& .flex-split-screen-drag-box-title-wrapper-sticky {
 		position: sticky;
 		top: 0;
-		z-index: 2001;
+		z-index: 15;
 		background: #f0f0f0;
 	}
 	& .flex-split-screen-drag-box-title-wrapper {

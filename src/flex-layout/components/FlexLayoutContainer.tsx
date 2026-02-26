@@ -19,6 +19,7 @@ export default function FlexLayoutContainer({
 	prevGrow: initialPrevGrow,
 	isInitialResizable,
 	isResizePanel,
+	stickyMode,
 	children,
 	className,
 	panelMode,
@@ -334,11 +335,118 @@ export default function FlexLayoutContainer({
 		}
 	}, [size, isFitContent, fitContent, containerCount, setGrowState]);
 
+	useEffect(() => {
+		if (!stickyMode) return;
+		if (!isResizePanel) return;
+
+		const stickyResizePanel = stickyMode.stickyResizePanel ?? true;
+		if (!stickyResizePanel) return;
+
+		const containerEl = flexContainerNodeRef.current;
+		if (!containerEl) return;
+
+		const nextPanel = containerEl.nextElementSibling as HTMLElement | null;
+		const prevPanel =
+			containerEl.previousElementSibling as HTMLElement | null;
+
+		const isPanel = (el: HTMLElement | null) =>
+			!!el && el.classList.contains(styles["flex-resize-panel"]);
+
+		const panelEl =
+			stickyMode.position === "top"
+				? isPanel(nextPanel)
+					? nextPanel
+					: null
+				: isPanel(prevPanel)
+					? prevPanel
+					: null;
+
+		if (!panelEl) return;
+
+		const prev = {
+			position: panelEl.style.position,
+			top: panelEl.style.top,
+			bottom: panelEl.style.bottom,
+		};
+
+		const offsetPx = stickyMode.offsetPx ?? 0;
+
+		let rafId = 0;
+
+		const apply = () => {
+			if (!containerEl.isConnected || !panelEl.isConnected) return;
+
+			const h = containerEl.offsetHeight;
+
+			panelEl.style.position = "sticky";
+
+			if (direction === "row") {
+				if (stickyMode.position === "top") {
+					panelEl.style.top = `${offsetPx}px`;
+					panelEl.style.bottom = "auto";
+				} else {
+					panelEl.style.bottom = `${offsetPx}px`;
+					panelEl.style.top = "auto";
+				}
+				return;
+			}
+
+			if (stickyMode.position === "top") {
+				panelEl.style.top = `${offsetPx + h}px`;
+				panelEl.style.bottom = "auto";
+			} else {
+				panelEl.style.bottom = `${offsetPx + h}px`;
+				panelEl.style.top = "auto";
+			}
+		};
+
+		const schedule = () => {
+			if (rafId) cancelAnimationFrame(rafId);
+			rafId = requestAnimationFrame(apply);
+		};
+
+		apply();
+
+		const ro =
+			typeof ResizeObserver !== "undefined"
+				? new ResizeObserver(schedule)
+				: null;
+
+		ro?.observe(containerEl);
+
+		return () => {
+			if (rafId) cancelAnimationFrame(rafId);
+			ro?.disconnect();
+
+			panelEl.style.position = prev.position;
+			panelEl.style.top = prev.top;
+			panelEl.style.bottom = prev.bottom;
+		};
+	}, [stickyMode, isResizePanel, direction]);
+
+	const offsetPx = stickyMode?.offsetPx ?? 0;
+
+	const stickyContainerStyle =
+		stickyMode && stickyMode.position === "top"
+			? {
+					position: "sticky" as const,
+					top: offsetPx,
+					bottom: "auto",
+				}
+			: stickyMode && stickyMode.position === "bottom"
+				? {
+						position: "sticky" as const,
+						bottom: offsetPx,
+						top: "auto",
+					}
+				: {};
+
 	return (
 		<>
 			<div
 				id={containerName}
 				data-container_name={containerName}
+				data-is_sticky={stickyMode ? "true" : "false"}
 				ref={flexContainerRef}
 				className={`${styles["flex-container"]} ${className && className !== "" ? className : ""}`}
 				{...(growState !== undefined
@@ -349,12 +457,12 @@ export default function FlexLayoutContainer({
 					: {})}
 				data-is_resize={isInitialResizable}
 				data-is_resize_panel={isResizePanel}
-				style={
-					(growState !== undefined && {
-						flex: `${growState} 1 0%`,
-					}) ||
-					{}
-				}
+				style={{
+					...(growState !== undefined
+						? { flex: `${growState} 1 0%` }
+						: {}),
+					...stickyContainerStyle,
+				}}
 			>
 				{(isFitContent && (
 					<div

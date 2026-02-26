@@ -1,5 +1,5 @@
 "use client";
-import equal from "fast-deep-equal";
+import equal from "fast-deep-equal/react";
 import { RefObject } from "react";
 import { BehaviorSubject, combineLatest } from "rxjs";
 import { distinctUntilChanged, filter, map } from "rxjs/operators";
@@ -9,11 +9,11 @@ import { DropTargetComponent } from "../hooks/useDrag";
  * 이전 값과 새 값이 동일하지 않을 때만 store를 업데이트하는 유틸 함수
  */
 function updateScrollStore<T>(subject: BehaviorSubject<T>, newValue: T) {
-	const currentValue = subject.getValue();
+	// const currentValue = subject.getValue();
 	// deep 비교를 통해 실제 변경이 있는 경우만 next
-	if (!equal(currentValue, newValue)) {
-		subject.next(newValue);
-	}
+	// if (!equal(currentValue, newValue)) {
+	subject.next(newValue);
+	// }
 }
 
 function updateSplitScreenStore(newValue: LayoutSplitScreenState) {

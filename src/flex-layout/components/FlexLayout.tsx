@@ -46,6 +46,7 @@ export default function FlexLayout({
 	className,
 	panelClassName,
 	panelMovementMode = "divorce",
+	scrollMode,
 	...props
 }: FlexLayoutProps) {
 	const containerCount = Children.count(children);
@@ -76,6 +77,15 @@ export default function FlexLayout({
 		return null;
 	}
 	//if (!childrenTemplate) return null;
+
+	const resolvedStyle =
+		scrollMode === "window"
+			? {
+					...(styles ?? {}),
+					overflow: "visible",
+				}
+			: styles;
+
 	return (
 		<>
 			<FlexLayoutProvider
@@ -92,6 +102,7 @@ export default function FlexLayout({
 					className={`${styles["flex-layout"]} ${className && className !== "" ? className : ""}`}
 					{...(ref ? { ref } : {})}
 					{...props}
+					data-scroll-mode={scrollMode}
 					data-layout_name={layoutName}
 					data-direction={direction}
 				>

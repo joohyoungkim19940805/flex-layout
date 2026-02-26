@@ -1,0 +1,11 @@
+.flex-layout-sentinel-style {
+	display: "block";
+	width: 0;
+	height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	overflow: "hidden";
+	pointer-events: "none";
+	flex: "0 0 0%";
+}
