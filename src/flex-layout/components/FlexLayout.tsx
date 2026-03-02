@@ -78,14 +78,6 @@ export default function FlexLayout({
 	}
 	//if (!childrenTemplate) return null;
 
-	const resolvedStyle =
-		scrollMode === "window"
-			? {
-					...(styles ?? {}),
-					overflow: "visible",
-				}
-			: styles;
-
 	return (
 		<>
 			<FlexLayoutProvider

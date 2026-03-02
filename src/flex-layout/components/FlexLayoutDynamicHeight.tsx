@@ -15,6 +15,8 @@ export default function FlexLayoutDynamicHeight({
 
 	const anchorRef = useRef<HTMLDivElement | null>(null);
 
+	const lastAppliedMinRef = useRef<number>(-1);
+
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 
@@ -30,6 +32,11 @@ export default function FlexLayoutDynamicHeight({
 
 		const measureAndApply = () => {
 			rafRef.current = null;
+
+			const measuringPrevHeight = target.style.height;
+			const measuringPrevMinHeight = target.style.minHeight;
+			target.style.height = "auto";
+			target.style.minHeight = "0px";
 
 			const viewportH = Math.max(
 				0,
@@ -101,11 +108,22 @@ export default function FlexLayoutDynamicHeight({
 					: baseH * (1 + safeExtraHeight / 100);
 
 			const nextH = Math.max(0, Math.ceil(appliedH));
-			if (Math.abs(nextH - lastAppliedRef.current) < 1) return;
+			const nextMinH = Math.max(0, Math.ceil(minHForHeight));
+
+			const sameH = Math.abs(nextH - lastAppliedRef.current) < 1;
+			const sameMinH = Math.abs(nextMinH - lastAppliedMinRef.current) < 1;
+
+			if (sameH && sameMinH) {
+				target.style.height = measuringPrevHeight;
+				target.style.minHeight = measuringPrevMinHeight;
+				return;
+			}
+
 			lastAppliedRef.current = nextH;
+			lastAppliedMinRef.current = nextMinH;
 
 			target.style.height = `${nextH}px`;
-			target.style.minHeight = `${minHForHeight}px`;
+			target.style.minHeight = `${nextMinH}px`;
 		};
 
 		const schedule = () => {

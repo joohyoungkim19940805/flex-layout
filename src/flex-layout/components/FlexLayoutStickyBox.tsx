@@ -251,7 +251,6 @@ const FlexLayoutStickyBox: FC<FlexLayoutStickyBoxProps> = ({
 
 		const parentEl = rootEl.parentElement;
 
-		console.log(parentEl);
 		if (!parentEl) return;
 
 		const targets: Element[] = [parentEl];
