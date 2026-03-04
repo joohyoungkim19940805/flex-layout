@@ -30,13 +30,19 @@ export default function FlexLayoutDynamicHeight({
 		const prevHeight = target.style.height;
 		const prevMinHeight = target.style.minHeight;
 
+		// ✅ sentinel을 항상 target의 "맨 마지막 자식"으로 유지
+		const ensureAnchorLast = () => {
+			// 이미 마지막이면 패스
+			if (target.lastElementChild === anchorEl) return;
+			// React와 싸우는 상황을 최소화하려고 "필요할 때만" 이동
+			target.appendChild(anchorEl);
+		};
+
 		const measureAndApply = () => {
 			rafRef.current = null;
 
-			const measuringPrevHeight = target.style.height;
-			const measuringPrevMinHeight = target.style.minHeight;
-			target.style.height = "auto";
-			target.style.minHeight = "0px";
+			// 라우트 변경/DOM 삽입으로 sentinel 뒤에 뭐가 붙었으면 끝으로 다시 밀기
+			ensureAnchorLast();
 
 			const viewportH = Math.max(
 				0,
@@ -51,7 +57,13 @@ export default function FlexLayoutDynamicHeight({
 			const targetTopInViewport = Math.max(0, Math.round(targetRect.top));
 			const minBorderBoxH = Math.max(0, viewportH - targetTopInViewport);
 
-			const scrollH = Math.max(0, Math.ceil(target.scrollHeight));
+			//  scrollHeight 대신 "sentinel의 위치"로 컨텐츠 끝을 잡음
+			// sentinel이 마지막 자식이면, sentinel의 top은 '마지막 컨텐츠 + (margin 포함한) 다음 위치'가 됨
+			const anchorRect = anchorEl.getBoundingClientRect();
+
+			// target이 자체 스크롤 컨테이너인 경우까지 커버
+			const anchorOffsetInTarget =
+				anchorRect.top - targetRect.top + (target.scrollTop || 0);
 
 			const paddingTop = parseFloat(cs.paddingTop) || 0;
 			const paddingBottom = parseFloat(cs.paddingBottom) || 0;
@@ -61,13 +73,24 @@ export default function FlexLayoutDynamicHeight({
 			let contentHForHeight = 0;
 			let minHForHeight = 0;
 
+			// sentinel의 top은 "border-top부터 sentinel까지" 거리라서
+			// border-box 기준 높이로 만들려면 paddingBottom/borderBottom만 더해주면 끝
+			const contentEndBorderBoxH = Math.max(
+				0,
+				Math.ceil(anchorOffsetInTarget + paddingBottom + borderBottom),
+			);
+
 			if (cs.boxSizing === "border-box") {
-				contentHForHeight = scrollH + borderTop + borderBottom;
+				contentHForHeight = contentEndBorderBoxH;
 				minHForHeight = minBorderBoxH;
 			} else {
 				contentHForHeight = Math.max(
 					0,
-					scrollH - paddingTop - paddingBottom,
+					contentEndBorderBoxH -
+						paddingTop -
+						paddingBottom -
+						borderTop -
+						borderBottom,
 				);
 				minHForHeight = Math.max(
 					0,
@@ -79,28 +102,12 @@ export default function FlexLayoutDynamicHeight({
 				);
 			}
 
-			let extraBottomMargin = 0;
-			let lastEl = target.lastElementChild as HTMLElement | null;
-			while (
-				lastEl &&
-				lastEl.dataset.flexLayoutDynamicHeightAnchor === "true"
-			) {
-				lastEl = lastEl.previousElementSibling as HTMLElement | null;
-			}
-			if (lastEl) {
-				const lastCs = window.getComputedStyle(lastEl);
-				extraBottomMargin = parseFloat(lastCs.marginBottom) || 0;
-			}
-
 			const safeExtraHeight = Number.isFinite(extraHeight)
 				? extraHeight
 				: 0;
 			const safeUnit = extraHeightUnit === "%" ? "%" : "px";
 
-			const baseH = Math.max(
-				minHForHeight,
-				Math.ceil(contentHForHeight + extraBottomMargin),
-			);
+			const baseH = Math.max(minHForHeight, contentHForHeight);
 
 			const appliedH =
 				safeUnit === "px"
@@ -113,11 +120,7 @@ export default function FlexLayoutDynamicHeight({
 			const sameH = Math.abs(nextH - lastAppliedRef.current) < 1;
 			const sameMinH = Math.abs(nextMinH - lastAppliedMinRef.current) < 1;
 
-			if (sameH && sameMinH) {
-				target.style.height = measuringPrevHeight;
-				target.style.minHeight = measuringPrevMinHeight;
-				return;
-			}
+			if (sameH && sameMinH) return;
 
 			lastAppliedRef.current = nextH;
 			lastAppliedMinRef.current = nextMinH;
@@ -131,9 +134,29 @@ export default function FlexLayoutDynamicHeight({
 			rafRef.current = window.requestAnimationFrame(measureAndApply);
 		};
 
+		// 초기 1회
 		schedule();
 
-		const mo = new MutationObserver(schedule);
+		// subtree는 유지 (라우팅 시 내부 DOM이 바뀌는 케이스 커버)
+		const mo = new MutationObserver((mutations) => {
+			// sentinel이 항상 마지막이 되도록 보정하고, 한번만 schedule
+			let shouldSchedule = false;
+
+			for (const m of mutations) {
+				if (
+					m.type === "attributes" &&
+					m.attributeName === "style" &&
+					m.target === target
+				) {
+					// target 자신의 height/minHeight 쓰는 건 무시 무한 루프 방지
+					continue;
+				}
+				shouldSchedule = true;
+			}
+
+			if (shouldSchedule) schedule();
+		});
+
 		mo.observe(target, {
 			subtree: true,
 			childList: true,
@@ -146,6 +169,9 @@ export default function FlexLayoutDynamicHeight({
 		if (target.firstElementChild) ro.observe(target.firstElementChild);
 
 		window.addEventListener("resize", schedule, { passive: true });
+		// 스크롤로 targetTop이 바뀌는 케이스까지 커버
+		window.addEventListener("scroll", schedule, { passive: true });
+
 		window.visualViewport?.addEventListener("resize", schedule);
 		window.visualViewport?.addEventListener("scroll", schedule);
 
@@ -161,6 +187,8 @@ export default function FlexLayoutDynamicHeight({
 			ro.disconnect();
 
 			window.removeEventListener("resize", schedule as any);
+			window.removeEventListener("scroll", schedule as any);
+
 			window.visualViewport?.removeEventListener(
 				"resize",
 				schedule as any,

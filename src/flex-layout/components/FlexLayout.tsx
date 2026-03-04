@@ -107,7 +107,7 @@ export default function FlexLayout({
 						//     containerCount
 						// )(child);
 						return (
-							<Fragment key={index}>
+							<Fragment key={child.props.containerName ?? index}>
 								{child}
 								{/*wrappedChild*/}
 								{/*<FlexLayoutContainer
