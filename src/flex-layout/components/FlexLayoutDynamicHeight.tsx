@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import {
 	Observable,
 	Subject,
@@ -31,7 +31,7 @@ export default function FlexLayoutDynamicHeight({
 
 	const lastAppliedMinRef = useRef<number>(-1);
 
-	useLayoutEffect(() => {
+	useEffect(() => {
 		if (typeof window === "undefined") return;
 
 		const anchorEl = anchorRef.current;

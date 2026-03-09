@@ -5,7 +5,6 @@ import {
 	isValidElement,
 	ReactElement,
 	ReactNode,
-	useEffect,
 	useRef,
 } from "react";
 import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
@@ -80,19 +79,39 @@ export default function FlexLayout({
 		(child) => child.props.isFitResize,
 	);
 
-	useEffect(() => {
-		const prevSize = prevLayoutSizeRef.current;
-		prevLayoutSizeRef.current = size;
+	// next js 전용으로 별도 안내하는 게 나아보임
+	// useEffect(() => {
+	// 	if (
+	// 		typeof document === "undefined" ||
+	// 		document.readyState !== "complete"
+	// 	)
+	// 		return;
+	// 	const prevSize = prevLayoutSizeRef.current;
+	// 	prevLayoutSizeRef.current = size;
 
-		if (!size) return;
-		if (!hasFitResizeContainer) return;
-		if (!prevSize || prevSize <= 0) return;
-		if (Math.abs(prevSize - size) < 0.001) return;
+	// 	if (!size) return;
+	// 	if (!hasFitResizeContainer) return;
+	// 	if (!prevSize || prevSize <= 0) return;
+	// 	if (Math.abs(prevSize - size) < 0.001) return;
 
-		[...(ref.current?.children || [])].filter((el) =>
-			(el as HTMLElement).hasAttribute("data-container_name"),
-		) as HTMLElement[];
-	}, [size, hasFitResizeContainer, ref]);
+	// 	const containers = [...(ref.current?.children || [])].filter((el) =>
+	// 		(el as HTMLElement).hasAttribute("data-container_name"),
+	// 	) as HTMLElement[];
+
+	// 	containers.forEach((e) => {
+	// 		const containerGrow = getGrow(e);
+	// 		const containerSize =
+	// 			prevSize * (containerGrow / containers.length);
+	// 		const nextGrow = mathGrow(containerSize, size, containers.length);
+	// 		console.log({
+	// 			containerName: e.dataset.container_name,
+	// 			containerGrow,
+	// 			containerSize,
+	// 			nextGrow,
+	// 		});
+	// 		e.style.flex = `${nextGrow} 1 0%`;
+	// 	});
+	// }, [size, hasFitResizeContainer, ref]);
 
 	if (flattenedChildren.length === 0) {
 		return null;
