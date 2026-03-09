@@ -5,6 +5,8 @@ import {
 	isValidElement,
 	ReactElement,
 	ReactNode,
+	useEffect,
+	useRef,
 } from "react";
 import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
 import styles from "../styles/FlexLayout.module.css";
@@ -49,6 +51,7 @@ export default function FlexLayout({
 }: FlexLayoutProps) {
 	const containerCount = Children.count(children);
 	const fitContent = direction === "row" ? "width" : "height";
+	const prevLayoutSizeRef = useRef<number | undefined>(undefined);
 	const { ref, size } = useSize(fitContent);
 
 	// Flatten children and unwrap Fragments
@@ -73,9 +76,28 @@ export default function FlexLayout({
 		isValidElement,
 	) as ReactElement<FlexLayoutChildrenType>[];
 
+	const hasFitResizeContainer = flattenedChildren.some(
+		(child) => child.props.isFitResize,
+	);
+
+	useEffect(() => {
+		const prevSize = prevLayoutSizeRef.current;
+		prevLayoutSizeRef.current = size;
+
+		if (!size) return;
+		if (!hasFitResizeContainer) return;
+		if (!prevSize || prevSize <= 0) return;
+		if (Math.abs(prevSize - size) < 0.001) return;
+
+		[...(ref.current?.children || [])].filter((el) =>
+			(el as HTMLElement).hasAttribute("data-container_name"),
+		) as HTMLElement[];
+	}, [size, hasFitResizeContainer, ref]);
+
 	if (flattenedChildren.length === 0) {
 		return null;
 	}
+
 	//if (!childrenTemplate) return null;
 
 	return (

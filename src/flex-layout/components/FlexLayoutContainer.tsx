@@ -224,10 +224,9 @@ export default function FlexLayoutContainer({
 					...(flexContainerNodeRef.current.parentElement?.children ||
 						[]),
 				]
-					.filter((el) => {
-						const item = el as HTMLElement;
-						return item.hasAttribute("data-container_name");
-					})
+					.filter((el) =>
+						(el as HTMLElement).hasAttribute("data-container_name"),
+					)
 					.filter(
 						(e) =>
 							(e as HTMLElement).style.flex != "0 1 0%" &&
@@ -262,6 +261,7 @@ export default function FlexLayoutContainer({
 		children,
 		fitContent,
 		isFitContent,
+		ref,
 		// setGrowState,
 	]);
 
