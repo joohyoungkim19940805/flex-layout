@@ -1,7 +1,6 @@
 "use client";
 import {
 	Children,
-	cloneElement,
 	Fragment,
 	isValidElement,
 	ReactElement,
@@ -10,39 +9,38 @@ import {
 import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
 import styles from "../styles/FlexLayout.module.css";
 import {
-	FlexContainerProps,
 	FlexLayoutChildrenType,
 	FlexLayoutProps,
 } from "../types/FlexLayoutTypes";
 
+import { useSize } from "../hooks/useSizes";
 import { FlexLayoutProvider } from "../providers/FlexLayoutContext";
 
-const withFlexLayout =
-	(
-		layoutName: string,
-		fitContent: "width" | "height",
-		containerCount: number,
-	) =>
-	(WrappedComponent: ReactElement<FlexLayoutChildrenType>) => {
-		if (
-			WrappedComponent.type === Fragment ||
-			WrappedComponent.type === "div" ||
-			WrappedComponent.type === "span"
-		) {
-			return WrappedComponent; // Fragment는 수정 없이 반환
-		}
-		return cloneElement(WrappedComponent, {
-			layoutName,
-			fitContent,
-			containerCount,
-		} as Partial<FlexContainerProps>);
-	};
+// const withFlexLayout =
+// 	(
+// 		layoutName: string,
+// 		fitContent: "width" | "height",
+// 		containerCount: number,
+// 	) =>
+// 	(WrappedComponent: ReactElement<FlexLayoutChildrenType>) => {
+// 		if (
+// 			WrappedComponent.type === Fragment ||
+// 			WrappedComponent.type === "div" ||
+// 			WrappedComponent.type === "span"
+// 		) {
+// 			return WrappedComponent; // Fragment는 수정 없이 반환
+// 		}
+// 		return cloneElement(WrappedComponent, {
+// 			layoutName,
+// 			fitContent,
+// 			containerCount,
+// 		} as Partial<FlexContainerProps>);
+// 	};
 
 export default function FlexLayout({
 	layoutName,
 	direction,
 	children,
-	ref,
 	className,
 	panelClassName,
 	panelMovementMode = "divorce",
@@ -51,6 +49,8 @@ export default function FlexLayout({
 }: FlexLayoutProps) {
 	const containerCount = Children.count(children);
 	const fitContent = direction === "row" ? "width" : "height";
+	const { ref, size } = useSize(fitContent);
+
 	// Flatten children and unwrap Fragments
 	type FragmentElement = ReactElement<
 		{ children?: ReactNode },
@@ -92,7 +92,7 @@ export default function FlexLayout({
 			>
 				<div
 					className={`${styles["flex-layout"]} ${className && className !== "" ? className : ""}`}
-					{...(ref ? { ref } : {})}
+					ref={ref}
 					{...props}
 					data-scroll-mode={scrollMode}
 					data-layout_name={layoutName}

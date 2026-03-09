@@ -1,8 +1,22 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+	MutableRefObject,
+	RefObject,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { auditTime, distinctUntilChanged, filter, fromEvent } from "rxjs";
 
-export const useSize = (sizeName: "height" | "width") => {
-	const ref = useRef<HTMLDivElement>(null);
+type DivRef =
+	| MutableRefObject<HTMLDivElement | null>
+	| RefObject<HTMLDivElement | null>;
+
+export const useSize = (sizeName: "height" | "width", externalRef?: DivRef) => {
+	const internalRef = useRef<HTMLDivElement>(null);
+	const ref = (externalRef ??
+		internalRef) as MutableRefObject<HTMLDivElement | null>;
+
 	const [size, setSize] = useState<number | undefined>(undefined);
 
 	useLayoutEffect(() => {
