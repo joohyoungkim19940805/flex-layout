@@ -111,4 +111,5 @@ export interface FlexLayoutContextValue {
 	panelClassName?: string;
 	containerCount: number;
 	fitContent: FitContent;
+	requestLayoutResize: () => void;
 }

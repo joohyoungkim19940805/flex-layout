@@ -5,17 +5,23 @@ import {
 	isValidElement,
 	ReactElement,
 	ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
 	useRef,
 } from "react";
 import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
 import styles from "../styles/FlexLayout.module.css";
 import {
+	FitContent,
 	FlexLayoutChildrenType,
 	FlexLayoutProps,
 } from "../types/FlexLayoutTypes";
 
 import { useSize } from "../hooks/useSizes";
 import { FlexLayoutProvider } from "../providers/FlexLayoutContext";
+import { getGrow, mathGrow, mathWeight } from "../utils";
 
 // const withFlexLayout =
 // 	(
@@ -49,8 +55,9 @@ export default function FlexLayout({
 	...props
 }: FlexLayoutProps) {
 	const containerCount = Children.count(children);
-	const fitContent = direction === "row" ? "width" : "height";
+	const fitContent = direction === "row" ? "width" : ("height" as FitContent);
 	const prevLayoutSizeRef = useRef<number | undefined>(undefined);
+	const fitRaf = useRef(0);
 	const { ref, size } = useSize(fitContent);
 
 	// Flatten children and unwrap Fragments
@@ -75,52 +82,112 @@ export default function FlexLayout({
 		isValidElement,
 	) as ReactElement<FlexLayoutChildrenType>[];
 
-	const hasFitResizeContainer = flattenedChildren.some(
-		(child) => child.props.isFitResize,
+	useEffect(() => {
+		if (
+			typeof document === "undefined" ||
+			document.readyState !== "complete"
+		)
+			return;
+		const containers = [...(ref.current?.children || [])].filter((el) =>
+			(el as HTMLElement).hasAttribute("data-container_name"),
+		) as HTMLElement[];
+		let notGrowList: Array<HTMLElement> = [];
+		let remainingGrow = containers.reduce((t, item, i) => {
+			if (
+				item.hasAttribute("data-grow") == false ||
+				item.getAttribute("data-is_resize") === "true"
+			) {
+				notGrowList.push(item);
+				return t;
+			}
+			let grow = parseFloat(item.dataset.grow || "");
+			item.style.flex = `${grow} 1 0%`;
+			t -= grow;
+			return t;
+		}, containers.length);
+		if (notGrowList.length != 0) {
+			let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
+			notGrowList.forEach((e) => {
+				e.dataset.grow = resizeWeight.toString();
+				e.style.flex = `${resizeWeight} 1 0%`;
+			});
+		}
+	}, [children, ref]);
+
+	const runLayoutResize = useCallback(() => {
+		if (
+			typeof document === "undefined" ||
+			document.readyState !== "complete"
+		)
+			return;
+
+		if (!size) return;
+
+		if (prevLayoutSizeRef.current === undefined) {
+			prevLayoutSizeRef.current = size;
+			return;
+		}
+
+		const prevSize = prevLayoutSizeRef.current;
+		prevLayoutSizeRef.current = size;
+
+		if (!prevSize || prevSize <= 0) return;
+		if (Math.abs(prevSize - size) < 0.1) return;
+
+		const containers = [...(ref.current?.children || [])].filter((el) =>
+			(el as HTMLElement).hasAttribute("data-container_name"),
+		) as HTMLElement[];
+
+		containers.forEach((e) => {
+			const containerGrow = getGrow(e);
+			const containerSize = size * (containerGrow / containers.length);
+			const nextGrow = mathGrow(containerSize, size, containers.length);
+
+			e.dataset.grow = `${nextGrow}`;
+			e.style.flex = `${nextGrow} 1 0%`;
+		});
+	}, [size, ref]);
+
+	const requestLayoutResize = useCallback(() => {
+		if (fitRaf.current) cancelAnimationFrame(fitRaf.current);
+
+		fitRaf.current = requestAnimationFrame(() => {
+			fitRaf.current = 0;
+			runLayoutResize();
+		});
+	}, [runLayoutResize]);
+
+	useLayoutEffect(() => {
+		requestLayoutResize();
+
+		return () => {
+			if (fitRaf.current) {
+				cancelAnimationFrame(fitRaf.current);
+				fitRaf.current = 0;
+			}
+		};
+	}, [size, requestLayoutResize]);
+
+	const contextValue = useMemo(
+		() => ({
+			layoutName,
+			direction,
+			panelMovementMode,
+			panelClassName,
+			containerCount,
+			fitContent,
+			requestLayoutResize,
+		}),
+		[
+			layoutName,
+			direction,
+			panelMovementMode,
+			panelClassName,
+			containerCount,
+			fitContent,
+			requestLayoutResize,
+		],
 	);
-
-	// next js 전용으로 별도 안내하는 게 나아보임
-	// useEffect(() => {
-	// 	if (
-	// 		typeof document === "undefined" ||
-	// 		document.readyState !== "complete"
-	// 	)
-	// 		return;
-	// 	const prevSize = prevLayoutSizeRef.current;
-	// 	prevLayoutSizeRef.current = size;
-
-	// 	if (!size) return;
-	// 	if (!hasFitResizeContainer) return;
-	// 	if (!prevSize || prevSize <= 0) return;
-	// 	if (Math.abs(prevSize - size) < 0.001) return;
-
-	// 	const containers = [...(ref.current?.children || [])].filter((el) =>
-	// 		(el as HTMLElement).hasAttribute("data-container_name"),
-	// 	) as HTMLElement[];
-
-	// 	//eps gap 체크
-
-	// 	if (
-	// 		containers.length -
-	// 			containers.reduce((t, e) => (t += getGrow(e)), 0) <=
-	// 		0.1
-	// 	)
-	// 		return;
-
-	// 	containers.forEach((e) => {
-	// 		const containerGrow = getGrow(e);
-	// 		const containerSize =
-	// 			prevSize * (containerGrow / containers.length);
-	// 		const nextGrow = mathGrow(containerSize, size, containers.length);
-	// 		console.log({
-	// 			containerName: e.dataset.container_name,
-	// 			containerGrow,
-	// 			containerSize,
-	// 			nextGrow,
-	// 		});
-	// 		e.style.flex = `${nextGrow} 1 0%`;
-	// 	});
-	// }, [size, hasFitResizeContainer, ref]);
 
 	if (flattenedChildren.length === 0) {
 		return null;
@@ -130,16 +197,7 @@ export default function FlexLayout({
 
 	return (
 		<>
-			<FlexLayoutProvider
-				value={{
-					layoutName,
-					direction,
-					panelMovementMode,
-					panelClassName,
-					containerCount,
-					fitContent,
-				}}
-			>
+			<FlexLayoutProvider value={contextValue}>
 				<div
 					className={`${styles["flex-layout"]} ${className && className !== "" ? className : ""}`}
 					ref={ref}

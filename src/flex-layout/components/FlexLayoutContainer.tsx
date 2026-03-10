@@ -5,12 +5,7 @@ import { useFlexLayoutContext } from "../providers/FlexLayoutContext";
 import { setContainerRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexContainerProps } from "../types/FlexLayoutTypes";
-import {
-	getGrow,
-	mathGrow,
-	mathWeight,
-	resize,
-} from "../utils/FlexLayoutUtils";
+import { getGrow, mathGrow, resize } from "../utils/FlexLayoutUtils";
 import FlexLayoutResizePanel from "./FlexLayoutResizePanel";
 
 export default function FlexLayoutContainer({
@@ -36,6 +31,7 @@ export default function FlexLayoutContainer({
 		layoutName,
 		fitContent,
 		containerCount,
+		requestLayoutResize,
 	} = useFlexLayoutContext();
 
 	const { ref, size } =
@@ -188,14 +184,15 @@ export default function FlexLayoutContainer({
 			!ref ||
 			!ref.current ||
 			!size ||
-			// lastSize.current === size ||
-			// getGrow(flexContainerNodeRef.current) == 0 ||
 			isUserResizingRef.current // 사용자가 직접 사이즈 조정 중일 때는 자동 조정 방지
 		)
 			return;
+
 		lastSize.current = size;
-		requestAnimationFrame(() => {
+
+		const rafId = requestAnimationFrame(() => {
 			if (!flexContainerNodeRef.current) return;
+
 			const sizeName = `${fitContent.charAt(0).toUpperCase() + fitContent.substring(1)}`;
 
 			if (isFitContent) {
@@ -203,14 +200,11 @@ export default function FlexLayoutContainer({
 					("max" + sizeName) as "maxWidth" | "maxHeight"
 				] = size + "px";
 			}
-			if (
-				!isFitResize &&
-				isFirstLoadRef.current
-				// lastContainerCountRef.current != null &&
-				// lastContainerCountRef.current != containerCount
-			) {
+
+			if (!isFitResize && isFirstLoadRef.current) {
 				return;
 			}
+
 			if (getGrow(flexContainerNodeRef.current) != 0) {
 				const parentSize =
 					(flexContainerNodeRef.current.parentElement &&
@@ -220,6 +214,7 @@ export default function FlexLayoutContainer({
 								| "clientHeight"
 						]) ||
 					0;
+
 				const notCloseList = [
 					...(flexContainerNodeRef.current.parentElement?.children ||
 						[]),
@@ -232,28 +227,30 @@ export default function FlexLayoutContainer({
 							(e as HTMLElement).style.flex != "0 1 0%" &&
 							e != flexContainerNodeRef.current,
 					) as HTMLElement[];
+
 				const newGrow = mathGrow(
 					size,
 					parentSize,
 					notCloseList.length + 1,
 				);
 
-				// setGrowState(newGrow);
 				flexContainerNodeRef.current.dataset.prev_grow =
 					flexContainerNodeRef.current.dataset.grow;
 				flexContainerNodeRef.current.dataset.grow = newGrow.toString();
 				flexContainerNodeRef.current.style.flex = `${newGrow} 1 0%`;
 				resize(notCloseList, notCloseList.length + 1 - newGrow);
 
-				// const newGrow = mathGrow(size, parentSize, containerCount);
-				// setGrowState(newGrow);
-				// flexContainerNodeRef.current.dataset.prev_grow =
-				//     flexContainerNodeRef.current.dataset.grow;
-				// flexContainerNodeRef.current.dataset.grow = newGrow.toString();
-				// flexContainerNodeRef.current.style.flex = `${newGrow} 1 0%`;
+				// Container 쪽 fit resize가 끝난 뒤,
+				// Layout 쪽 최종 normalize를 다음 frame에 요청
+				requestLayoutResize();
 			}
+
 			isFirstLoadRef.current = true;
 		});
+
+		return () => {
+			cancelAnimationFrame(rafId);
+		};
 	}, [
 		size,
 		containerCount,
@@ -262,41 +259,41 @@ export default function FlexLayoutContainer({
 		fitContent,
 		isFitContent,
 		ref,
-		// setGrowState,
+		requestLayoutResize,
 	]);
 
-	useEffect(() => {
-		if (!flexContainerNodeRef.current) return;
+	// useEffect(() => {
+	// 	if (!flexContainerNodeRef.current) return;
 
-		let notGrowList: Array<HTMLElement> = [];
-		let containerList = [
-			...(flexContainerNodeRef.current.parentElement?.children || []),
-		].filter((e) => e.hasAttribute("data-container_name"));
-		let remainingGrow = containerList.reduce((t, e, i) => {
-			let item = e as HTMLElement;
+	// 	let notGrowList: Array<HTMLElement> = [];
+	// 	let containerList = [
+	// 		...(flexContainerNodeRef.current.parentElement?.children || []),
+	// 	].filter((e) => e.hasAttribute("data-container_name"));
+	// 	let remainingGrow = containerList.reduce((t, e, i) => {
+	// 		let item = e as HTMLElement;
 
-			if (item.classList.contains(styles["flex-resize-panel"])) return t;
+	// 		if (item.classList.contains(styles["flex-resize-panel"])) return t;
 
-			if (
-				e.hasAttribute("data-grow") == false ||
-				e.getAttribute("data-is_resize") === "true"
-			) {
-				notGrowList.push(item);
-				return t;
-			}
-			let grow = parseFloat(item.dataset.grow || "");
-			item.style.flex = `${grow} 1 0%`;
-			t -= grow;
-			return t;
-		}, containerList.length);
-		if (notGrowList.length != 0) {
-			let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
-			notGrowList.forEach((e) => {
-				e.dataset.grow = resizeWeight.toString();
-				e.style.flex = `${resizeWeight} 1 0%`;
-			});
-		}
-	}, []);
+	// 		if (
+	// 			e.hasAttribute("data-grow") == false ||
+	// 			e.getAttribute("data-is_resize") === "true"
+	// 		) {
+	// 			notGrowList.push(item);
+	// 			return t;
+	// 		}
+	// 		let grow = parseFloat(item.dataset.grow || "");
+	// 		item.style.flex = `${grow} 1 0%`;
+	// 		t -= grow;
+	// 		return t;
+	// 	}, containerList.length);
+	// 	if (notGrowList.length != 0) {
+	// 		let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
+	// 		notGrowList.forEach((e) => {
+	// 			e.dataset.grow = resizeWeight.toString();
+	// 			e.style.flex = `${resizeWeight} 1 0%`;
+	// 		});
+	// 	}
+	// }, []);
 
 	useEffect(() => {
 		if (!stickyMode) return;
