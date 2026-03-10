@@ -1,11 +1,17 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { useSize } from "../hooks/useSizes";
 import { useFlexLayoutContext } from "../providers/FlexLayoutContext";
 import { setContainerRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexContainerProps } from "../types/FlexLayoutTypes";
-import { getGrow, mathGrow, resize } from "../utils/FlexLayoutUtils";
+import { getGrow, mathGrow } from "../utils/FlexLayoutUtils";
 import FlexLayoutResizePanel from "./FlexLayoutResizePanel";
 
 export default function FlexLayoutContainer({
@@ -31,7 +37,6 @@ export default function FlexLayoutContainer({
 		layoutName,
 		fitContent,
 		containerCount,
-		requestLayoutResize,
 	} = useFlexLayoutContext();
 
 	const { ref, size } =
@@ -45,6 +50,8 @@ export default function FlexLayoutContainer({
 	const isUserResizingRef = useRef(false);
 
 	const lastSize = useRef<number | null>(null);
+	const lastMaxSize = useRef<number | null>(null);
+
 	const isFirstLoadRef = useRef(false);
 	// const lastContainerCountRef = useRef<number | null>(null);
 
@@ -111,7 +118,7 @@ export default function FlexLayoutContainer({
 	);
 
 	// 클라이언트 마운트 후 sessionStorage에서 grow값을 가져와 state 업데이트 (SSR/Hydration 안정화)
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (
 			typeof window == "undefined" ||
 			flexContainerNodeRef.current === null
@@ -184,6 +191,8 @@ export default function FlexLayoutContainer({
 			!ref ||
 			!ref.current ||
 			!size ||
+			lastSize.current == size ||
+			Math.abs((lastSize.current ?? 0) - size) <= 5 ||
 			isUserResizingRef.current // 사용자가 직접 사이즈 조정 중일 때는 자동 조정 방지
 		)
 			return;
@@ -199,6 +208,7 @@ export default function FlexLayoutContainer({
 				flexContainerNodeRef.current.style[
 					("max" + sizeName) as "maxWidth" | "maxHeight"
 				] = size + "px";
+				lastMaxSize.current = size;
 			}
 
 			if (!isFitResize && isFirstLoadRef.current) {
@@ -215,34 +225,27 @@ export default function FlexLayoutContainer({
 						]) ||
 					0;
 
-				const notCloseList = [
-					...(flexContainerNodeRef.current.parentElement?.children ||
-						[]),
-				]
-					.filter((el) =>
-						(el as HTMLElement).hasAttribute("data-container_name"),
-					)
-					.filter(
-						(e) =>
-							(e as HTMLElement).style.flex != "0 1 0%" &&
-							e != flexContainerNodeRef.current,
-					) as HTMLElement[];
+				//
+				const prevGrow = mathGrow(
+					lastMaxSize.current || 0,
+					parentSize,
+					containerCount,
+					// notCloseList.length + 1,
+				);
 
 				const newGrow = mathGrow(
 					size,
 					parentSize,
-					notCloseList.length + 1,
+					containerCount,
+					// notCloseList.length + 1,
 				);
 
-				flexContainerNodeRef.current.dataset.prev_grow =
-					flexContainerNodeRef.current.dataset.grow;
-				flexContainerNodeRef.current.dataset.grow = newGrow.toString();
-				flexContainerNodeRef.current.style.flex = `${newGrow} 1 0%`;
-				resize(notCloseList, notCloseList.length + 1 - newGrow);
-
-				// Container 쪽 fit resize가 끝난 뒤,
-				// Layout 쪽 최종 normalize를 다음 frame에 요청
-				requestLayoutResize();
+				if (
+					newGrow / prevGrow >= 0.95 ||
+					newGrow / prevGrow >= 1.05 ||
+					!lastMaxSize.current
+				)
+					return;
 			}
 
 			isFirstLoadRef.current = true;
@@ -259,7 +262,6 @@ export default function FlexLayoutContainer({
 		fitContent,
 		isFitContent,
 		ref,
-		requestLayoutResize,
 	]);
 
 	// useEffect(() => {

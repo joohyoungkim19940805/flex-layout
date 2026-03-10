@@ -83,7 +83,6 @@ export interface FlexLayoutProps extends Omit<
 	className?: string;
 	panelClassName?: string;
 	panelMovementMode?: PanelMovementMode;
-
 	/**
 	 * scrollMode
 	 * layout : FlexLayout = overflow : auto
@@ -111,5 +110,4 @@ export interface FlexLayoutContextValue {
 	panelClassName?: string;
 	containerCount: number;
 	fitContent: FitContent;
-	requestLayoutResize: () => void;
 }
