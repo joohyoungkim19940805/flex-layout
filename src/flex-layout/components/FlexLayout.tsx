@@ -98,6 +98,15 @@ export default function FlexLayout({
 	// 		(el as HTMLElement).hasAttribute("data-container_name"),
 	// 	) as HTMLElement[];
 
+	// 	//eps gap 체크
+
+	// 	if (
+	// 		containers.length -
+	// 			containers.reduce((t, e) => (t += getGrow(e)), 0) <=
+	// 		0.1
+	// 	)
+	// 		return;
+
 	// 	containers.forEach((e) => {
 	// 		const containerGrow = getGrow(e);
 	// 		const containerSize =
