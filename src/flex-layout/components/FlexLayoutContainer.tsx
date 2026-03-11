@@ -11,7 +11,7 @@ import { useFlexLayoutContext } from "../providers/FlexLayoutContext";
 import { setContainerRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexContainerProps } from "../types/FlexLayoutTypes";
-import { getGrow, mathGrow } from "../utils/FlexLayoutUtils";
+import { getGrow, mathGrow, resize } from "../utils/FlexLayoutUtils";
 import FlexLayoutResizePanel from "./FlexLayoutResizePanel";
 
 export default function FlexLayoutContainer({
@@ -203,7 +203,11 @@ export default function FlexLayoutContainer({
 			if (!flexContainerNodeRef.current) return;
 
 			const sizeName = `${fitContent.charAt(0).toUpperCase() + fitContent.substring(1)}`;
-
+			const _lastMaxSize = lastMaxSize.current;
+			// const _lastContainerSize =
+			// 	flexContainerNodeRef.current.getBoundingClientRect()[
+			// 		fitContent
+			// 	];
 			if (isFitContent) {
 				flexContainerNodeRef.current.style[
 					("max" + sizeName) as "maxWidth" | "maxHeight"
@@ -226,12 +230,17 @@ export default function FlexLayoutContainer({
 					0;
 
 				//
-				const prevGrow = mathGrow(
-					lastMaxSize.current || 0,
-					parentSize,
-					containerCount,
-					// notCloseList.length + 1,
-				);
+				// const lastMaxSizeGrow = mathGrow(
+				// 	_lastMaxSize || 0,
+				// 	parentSize,
+				// 	containerCount,
+				// );
+
+				// const currentSizeGrow = mathGrow(
+				// 	_lastContainerSize,
+				// 	parentSize,
+				// 	containerCount,
+				// );
 
 				const newGrow = mathGrow(
 					size,
@@ -241,11 +250,30 @@ export default function FlexLayoutContainer({
 				);
 
 				if (
-					newGrow / prevGrow >= 0.95 ||
-					newGrow / prevGrow >= 1.05 ||
-					!lastMaxSize.current
+					_lastMaxSize &&
+					flexContainerNodeRef.current.getBoundingClientRect()[
+						fitContent
+					] /
+						_lastMaxSize <=
+						0.95
 				)
 					return;
+
+				const notCloseList = [
+					...(flexContainerNodeRef.current.parentElement?.children ||
+						[]),
+				]
+					.filter((el) =>
+						(el as HTMLElement).hasAttribute("data-container_name"),
+					)
+					.filter(
+						(e) =>
+							(e as HTMLElement).style.flex != "0 1 0%" &&
+							e != flexContainerNodeRef.current,
+					) as HTMLElement[];
+
+				flexContainerNodeRef.current.style.flex = `${newGrow} 1 0%`;
+				resize(notCloseList, notCloseList.length + 1 - newGrow);
 			}
 
 			isFirstLoadRef.current = true;
