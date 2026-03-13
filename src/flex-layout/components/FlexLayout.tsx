@@ -7,7 +7,6 @@ import {
 	ReactElement,
 	ReactNode,
 	useCallback,
-	useEffect,
 	useMemo,
 	useRef,
 } from "react";
@@ -20,7 +19,6 @@ import {
 } from "../types/FlexLayoutTypes";
 
 import { FlexLayoutProvider } from "../providers/FlexLayoutContext";
-import { mathWeight } from "../utils";
 
 // const withFlexLayout =
 // 	(
@@ -99,41 +97,36 @@ const FlexLayout = forwardRef<HTMLDivElement, FlexLayoutProps>(
 			isValidElement,
 		) as ReactElement<FlexLayoutChildrenType>[];
 
-		useEffect(() => {
-			if (
-				typeof document === "undefined" ||
-				document.readyState !== "complete"
-			)
-				return;
-			if (!innerRef.current) return;
-			const containers = [...(innerRef.current.children || [])].filter(
-				(el) => (el as HTMLElement).hasAttribute("data-container_name"),
-			) as HTMLElement[];
-			let notGrowList: Array<HTMLElement> = [];
-			let remainingGrow = containers.reduce((t, item, i) => {
-				if (
-					item.hasAttribute("data-grow") == false ||
-					item.getAttribute("data-is_resize") === "true"
-				) {
-					notGrowList.push(item);
-					return t;
-				}
-				let grow = parseFloat(item.dataset.grow || "");
-				item.style.flex = `${grow} 1 0%`;
-				t -= grow;
-				return t;
-			}, containers.length);
-			if (notGrowList.length != 0) {
-				let resizeWeight = mathWeight(
-					notGrowList.length,
-					remainingGrow,
-				);
-				notGrowList.forEach((e) => {
-					e.dataset.grow = resizeWeight.toString();
-					e.style.flex = `${resizeWeight} 1 0%`;
-				});
-			}
-		}, [children]);
+		// useEffect(() => {
+		// 	if (!innerRef.current) return;
+		// 	const containers = [...(innerRef.current.children || [])].filter(
+		// 		(el) => (el as HTMLElement).hasAttribute("data-container_name"),
+		// 	) as HTMLElement[];
+		// 	let notGrowList: Array<HTMLElement> = [];
+		// 	let remainingGrow = containers.reduce((t, item, i) => {
+		// 		if (
+		// 			item.hasAttribute("data-grow") == false ||
+		// 			item.getAttribute("data-is_resize") === "true"
+		// 		) {
+		// 			notGrowList.push(item);
+		// 			return t;
+		// 		}
+		// 		let grow = parseFloat(item.dataset.grow || "");
+		// 		item.style.flex = `${grow} 1 0%`;
+		// 		t -= grow;
+		// 		return t;
+		// 	}, containers.length);
+		// 	if (notGrowList.length != 0) {
+		// 		let resizeWeight = mathWeight(
+		// 			notGrowList.length,
+		// 			remainingGrow,
+		// 		);
+		// 		notGrowList.forEach((e) => {
+		// 			e.dataset.grow = resizeWeight.toString();
+		// 			e.style.flex = `${resizeWeight} 1 0%`;
+		// 		});
+		// 	}
+		// }, [containerCount]);
 
 		const contextValue = useMemo(
 			() => ({

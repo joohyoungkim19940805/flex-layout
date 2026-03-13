@@ -11,7 +11,12 @@ import { useFlexLayoutContext } from "../providers/FlexLayoutContext";
 import { setContainerRef } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexContainerProps } from "../types/FlexLayoutTypes";
-import { getGrow, mathGrow, resize } from "../utils/FlexLayoutUtils";
+import {
+	getGrow,
+	mathGrow,
+	mathWeight,
+	resize,
+} from "../utils/FlexLayoutUtils";
 import FlexLayoutResizePanel from "./FlexLayoutResizePanel";
 
 export default function FlexLayoutContainer({
@@ -292,38 +297,38 @@ export default function FlexLayoutContainer({
 		ref,
 	]);
 
-	// useEffect(() => {
-	// 	if (!flexContainerNodeRef.current) return;
+	useEffect(() => {
+		if (!flexContainerNodeRef.current) return;
 
-	// 	let notGrowList: Array<HTMLElement> = [];
-	// 	let containerList = [
-	// 		...(flexContainerNodeRef.current.parentElement?.children || []),
-	// 	].filter((e) => e.hasAttribute("data-container_name"));
-	// 	let remainingGrow = containerList.reduce((t, e, i) => {
-	// 		let item = e as HTMLElement;
+		let notGrowList: Array<HTMLElement> = [];
+		let containerList = [
+			...(flexContainerNodeRef.current.parentElement?.children || []),
+		].filter((e) => e.hasAttribute("data-container_name"));
+		let remainingGrow = containerList.reduce((t, e, i) => {
+			let item = e as HTMLElement;
 
-	// 		if (item.classList.contains(styles["flex-resize-panel"])) return t;
+			if (item.classList.contains(styles["flex-resize-panel"])) return t;
 
-	// 		if (
-	// 			e.hasAttribute("data-grow") == false ||
-	// 			e.getAttribute("data-is_resize") === "true"
-	// 		) {
-	// 			notGrowList.push(item);
-	// 			return t;
-	// 		}
-	// 		let grow = parseFloat(item.dataset.grow || "");
-	// 		item.style.flex = `${grow} 1 0%`;
-	// 		t -= grow;
-	// 		return t;
-	// 	}, containerList.length);
-	// 	if (notGrowList.length != 0) {
-	// 		let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
-	// 		notGrowList.forEach((e) => {
-	// 			e.dataset.grow = resizeWeight.toString();
-	// 			e.style.flex = `${resizeWeight} 1 0%`;
-	// 		});
-	// 	}
-	// }, []);
+			if (
+				e.hasAttribute("data-grow") == false ||
+				e.getAttribute("data-is_resize") === "true"
+			) {
+				notGrowList.push(item);
+				return t;
+			}
+			let grow = parseFloat(item.dataset.grow || "");
+			item.style.flex = `${grow} 1 0%`;
+			t -= grow;
+			return t;
+		}, containerList.length);
+		if (notGrowList.length != 0) {
+			let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
+			notGrowList.forEach((e) => {
+				e.dataset.grow = resizeWeight.toString();
+				e.style.flex = `${resizeWeight} 1 0%`;
+			});
+		}
+	}, []);
 
 	useEffect(() => {
 		if (!stickyMode) return;
