@@ -18,7 +18,6 @@ import {
 	getSplitScreen,
 	removeRootSplitScreen,
 	removeSplitScreenChild,
-	resetRootSplitScreen,
 	setSplitScreen,
 } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
@@ -29,7 +28,7 @@ import FlexLayoutSplitScreenDragBox, {
 } from "./FlexLayoutSplitScreenDragBox";
 
 import equal from "fast-deep-equal/react";
-import { distinctUntilChanged, take } from "rxjs";
+import { distinctUntilChanged } from "rxjs";
 import FlexLayoutSplitScreenDragBoxContainer from "./FlexLayoutSplitScreenDragBoxContainer";
 import FlexLayoutSplitScreenDragBoxItem from "./FlexLayoutSplitScreenDragBoxItem";
 import FlexLayoutSplitScreenDragBoxTitleMore from "./FlexLayoutSplitScreenDragBoxTitleMore";
@@ -77,6 +76,22 @@ function isInnerDrop({
 	return isElementInner;
 }
 
+// SSR 환경과 브라우저 환경 모두에서 안전하게 키를 생성하는 헬퍼 함수
+const generateScreenKey = () => {
+	// 브라우저 환경일 때 (window 객체가 존재할 때)
+	if (typeof window !== "undefined" && window.crypto) {
+		return Array.from(
+			window.crypto.getRandomValues(new Uint32Array(16)),
+			(e) => e.toString(32).padStart(2, "0"),
+		).join("");
+	}
+	// 서버 환경일 때 (Node.js) - 대체 랜덤 문자열 생성
+	return (
+		Math.random().toString(36).substring(2, 15) +
+		Math.random().toString(36).substring(2, 15)
+	);
+};
+
 const handleUpdateDropTargetComponents = ({
 	orderName,
 	parentOrderName,
@@ -91,10 +106,7 @@ const handleUpdateDropTargetComponents = ({
 	afterDropTargetComponent,
 	centerDropTargetComponent,
 	dropDocumentOutsideOption,
-	screenKey = Array.from(
-		window.crypto.getRandomValues(new Uint32Array(16)),
-		(e) => e.toString(32).padStart(2, "0"),
-	).join(""),
+	screenKey = generateScreenKey(),
 }: {
 	orderName: DropPositionOrderName;
 	parentOrderName?: DropPositionOrderName;
@@ -165,12 +177,7 @@ const handleUpdateDropTargetComponents = ({
 		),
 		navigationTitle,
 		dropDocumentOutsideOption,
-		screenKey:
-			screenKey ||
-			Array.from(
-				window.crypto.getRandomValues(new Uint32Array(16)),
-				(e) => e.toString(32).padStart(2, "0"),
-			).join(""),
+		screenKey: screenKey || generateScreenKey(),
 	};
 	let allComponents;
 
@@ -388,58 +395,33 @@ export default function FlexLayoutSplitScreen({
 		layoutName: layoutName,
 	});
 
-	useEffect(() => {
-		// resetOnChildrenChange가 true면, mount 시점에도 초기화(기존 동작)
-		// false면 mount 시점에는 기존 store가 있으면 유지 (Next에서 유지 목적)
-		if (isResetOnChildrenChange) {
-			resetRootSplitScreen(layoutName);
-		}
+	const resolvedScreenKeyRef = useRef(screenKey ?? generateScreenKey());
 
+	const resolvedScreenKey = screenKey ?? resolvedScreenKeyRef.current;
+	// console.log(111111111111111111111);
+	useEffect(() => {
 		const sub = getSplitScreen(layoutName, layoutName).subscribe(
 			(layoutInfo) => {
-				if (layoutInfo) {
-					setBeforeDropTargetComponent([
-						...layoutInfo.beforeDropTargetComponent,
-					]);
-					setAfterDropTargetComponent([
-						...layoutInfo.afterDropTargetComponent,
-					]);
-					setCenterDropTargetComponent([
-						...layoutInfo.centerDropTargetComponent,
-					]);
-					setDirection(layoutInfo.direction);
-
-					if (
-						layoutInfo.beforeDropTargetComponent.length !== 0 ||
-						layoutInfo.afterDropTargetComponent.length !== 0
-					) {
-						setIsSplit(true);
-					}
+				if (!layoutInfo) {
 					return;
 				}
 
-				// store가 없으면 초기 생성
-				setSplitScreen(layoutName, layoutName, {
-					afterDropTargetComponent: [],
-					beforeDropTargetComponent: [],
-					centerDropTargetComponent: [
-						{
-							containerName,
-							component: children,
-							navigationTitle,
-							dropDocumentOutsideOption,
-							screenKey:
-								screenKey ??
-								Array.from(
-									window.crypto.getRandomValues(
-										new Uint32Array(16),
-									),
-									(e) => e.toString(32).padStart(2, "0"),
-								).join(""),
-						},
-					],
-					direction,
-				});
+				setBeforeDropTargetComponent([
+					...layoutInfo.beforeDropTargetComponent,
+				]);
+				setAfterDropTargetComponent([
+					...layoutInfo.afterDropTargetComponent,
+				]);
+				setCenterDropTargetComponent([
+					...layoutInfo.centerDropTargetComponent,
+				]);
+				setDirection(layoutInfo.direction);
+
+				const nextIsSplit =
+					layoutInfo.beforeDropTargetComponent.length !== 0 ||
+					layoutInfo.afterDropTargetComponent.length !== 0;
+
+				setIsSplit(nextIsSplit);
 			},
 		);
 
@@ -449,7 +431,42 @@ export default function FlexLayoutSplitScreen({
 				removeRootSplitScreen(layoutName);
 			}
 		};
-	}, [layoutName]);
+	}, [layoutName, isRemoveStoreOnUnmount]);
+
+	useEffect(() => {
+		if (!isResetOnChildrenChange) {
+			return;
+		}
+
+		const nextCenter = {
+			containerName,
+			component: children,
+			navigationTitle,
+			dropDocumentOutsideOption,
+			screenKey: resolvedScreenKey,
+		};
+
+		setIsSplit(false);
+		setDirection("row");
+		setBeforeDropTargetComponent([]);
+		setAfterDropTargetComponent([]);
+		setCenterDropTargetComponent([nextCenter]);
+
+		setSplitScreen(layoutName, layoutName, {
+			afterDropTargetComponent: [],
+			beforeDropTargetComponent: [],
+			centerDropTargetComponent: [nextCenter],
+			direction: "row",
+		});
+	}, [
+		isResetOnChildrenChange,
+		layoutName,
+		containerName,
+		children,
+		navigationTitle,
+		dropDocumentOutsideOption,
+		resolvedScreenKey,
+	]);
 
 	useEffect(() => {
 		if (isResetOnChildrenChange) {
@@ -765,6 +782,14 @@ export default function FlexLayoutSplitScreen({
 		centerDropTargetComponent,
 	]);
 
+	const fallbackRootCenter = {
+		containerName,
+		component: children,
+		navigationTitle,
+		dropDocumentOutsideOption,
+		screenKey: resolvedScreenKey,
+	};
+
 	return (
 		<div className={`${styles["flex-split-screen"]}`} ref={layoutRef}>
 			<FlexLayout
@@ -820,7 +845,13 @@ export default function FlexLayoutSplitScreen({
 					<div></div>
 				)}
 				{centerDropTargetComponent.length === 0 ? (
-					<div></div>
+					<FlexLayoutContainer
+						containerName={containerName}
+						isInitialResizable
+						isResizePanel={false}
+					>
+						{children}
+					</FlexLayoutContainer>
 				) : (
 					<FlexLayoutContainer
 						containerName={`${centerDropTargetComponent[0].containerName}`}
@@ -992,72 +1023,88 @@ function FlexLayoutSplitScreenChild({
 	const activeIndexRef = useRef(activeIndex);
 	useEffect(() => {
 		const storeKey = `${layoutName}=${screenKey}`;
+		const current = getCurrentSplitScreenComponents(rootName, storeKey);
 
-		const subscribe = getSplitScreen(rootName, storeKey)
-			.pipe(take(1))
-			.subscribe((layoutInfo) => {
-				if (layoutInfo) return;
+		if (!current) {
+			setBeforeDropTargetComponent([]);
+			setAfterDropTargetComponent([]);
+			setCenterDropTargetComponent(initialCenterRef.current);
+			setDirection("row");
+			setIsSplit(false);
 
-				setSplitScreen(rootName, storeKey, {
-					afterDropTargetComponent: [],
-					beforeDropTargetComponent: [],
-					centerDropTargetComponent: initialCenterRef.current,
-					direction,
-				});
+			setSplitScreen(rootName, storeKey, {
+				afterDropTargetComponent: [],
+				beforeDropTargetComponent: [],
+				centerDropTargetComponent: initialCenterRef.current,
+				direction: "row",
 			});
+		} else {
+			setBeforeDropTargetComponent([
+				...current.beforeDropTargetComponent,
+			]);
+			setAfterDropTargetComponent([...current.afterDropTargetComponent]);
+			setCenterDropTargetComponent([
+				...current.centerDropTargetComponent,
+			]);
+			setDirection(current.direction);
+			setIsSplit(
+				current.beforeDropTargetComponent.length !== 0 ||
+					current.afterDropTargetComponent.length !== 0,
+			);
+		}
+
 		return () => {
-			removeSplitScreenChild(rootName, `${layoutName}=${screenKey}`);
-			subscribe.unsubscribe();
+			removeSplitScreenChild(rootName, storeKey);
 		};
 	}, [rootName, layoutName, screenKey]);
 
 	useEffect(() => {
-		const subscribe = getSplitScreen(rootName, `${layoutName}=${screenKey}`)
-			//.pipe(take(1))
-			.subscribe((layoutInfo) => {
-				if (layoutInfo) {
-					// console.log(
-					//     'layoutInfo:::',
-					//     layoutInfo,
-					//     layoutName,
-					//     containerName
-					// );
-					setBeforeDropTargetComponent([
-						...layoutInfo.beforeDropTargetComponent,
-					]);
-					setAfterDropTargetComponent([
-						...layoutInfo.afterDropTargetComponent,
-					]);
-					setCenterDropTargetComponent([
-						...layoutInfo.centerDropTargetComponent,
-					]);
-					setDirection(layoutInfo.direction);
-					if (
-						layoutInfo.beforeDropTargetComponent.length !== 0 ||
-						layoutInfo.afterDropTargetComponent.length !== 0
-					) {
-						setIsSplit(true);
-					} else if (
-						layoutInfo.beforeDropTargetComponent.length === 0 &&
-						layoutInfo.centerDropTargetComponent.length === 0 &&
-						layoutInfo.afterDropTargetComponent.length === 0
-					) {
-						dropMovementEventSubject.next({
-							state: "remove",
-							targetContainerName: containerName,
-							targetParentLayoutName: "",
-							targetLayoutName: parentLayoutName,
-						});
-						setIsEmptyContent(true);
-					}
+		const storeKey = `${layoutName}=${screenKey}`;
+
+		const subscribe = getSplitScreen(rootName, storeKey).subscribe(
+			(layoutInfo) => {
+				if (!layoutInfo) {
+					return;
 				}
-			});
+
+				setBeforeDropTargetComponent([
+					...layoutInfo.beforeDropTargetComponent,
+				]);
+				setAfterDropTargetComponent([
+					...layoutInfo.afterDropTargetComponent,
+				]);
+				setCenterDropTargetComponent([
+					...layoutInfo.centerDropTargetComponent,
+				]);
+				setDirection(layoutInfo.direction);
+
+				const nextIsSplit =
+					layoutInfo.beforeDropTargetComponent.length !== 0 ||
+					layoutInfo.afterDropTargetComponent.length !== 0;
+
+				setIsSplit(nextIsSplit);
+
+				if (
+					!nextIsSplit &&
+					layoutInfo.centerDropTargetComponent.length === 0
+				) {
+					dropMovementEventSubject.next({
+						state: "remove",
+						targetContainerName: containerName,
+						targetParentLayoutName: "",
+						targetLayoutName: parentLayoutName,
+					});
+					setIsEmptyContent(true);
+				} else {
+					setIsEmptyContent(false);
+				}
+			},
+		);
 
 		return () => {
 			subscribe.unsubscribe();
-			removeRootSplitScreen(layoutName);
 		};
-	}, [rootName, layoutName]);
+	}, [rootName, layoutName, screenKey, containerName, parentLayoutName]);
 
 	useEffect(() => {
 		const subscribe = dropMovementEventSubject
