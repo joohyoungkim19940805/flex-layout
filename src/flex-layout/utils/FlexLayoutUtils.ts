@@ -60,19 +60,25 @@ export function findNotCloseFlexContent(
 	return _target as HTMLElement | HTMLDivElement | null;
 }
 
-export function remain(flexContainerList: Array<HTMLElement>) {
+export function remain(
+	flexContainerList: Array<HTMLElement>,
+	totalSize?: number,
+) {
 	return new Promise((resolve) => {
 		let notGrowList: Array<HTMLElement> = [];
-		let totalGrow = flexContainerList.reduce((t, e, i) => {
-			if (e.hasAttribute("data-grow") == false) {
-				notGrowList.push(e);
+		let totalGrow = flexContainerList.reduce(
+			(t, e, i) => {
+				if (e.hasAttribute("data-grow") == false) {
+					notGrowList.push(e);
+					return t;
+				}
+				let grow = parseFloat(e.dataset.grow || "");
+				e.style.flex = `${grow} 1 0%`;
+				t -= grow;
 				return t;
-			}
-			let grow = parseFloat(e.dataset.grow || "");
-			e.style.flex = `${grow} 1 0%`;
-			t -= grow;
-			return t;
-		}, flexContainerList.length);
+			},
+			totalSize !== undefined ? totalSize : flexContainerList.length,
+		);
 
 		if (notGrowList.length != 0) {
 			resize(notGrowList, totalGrow);
