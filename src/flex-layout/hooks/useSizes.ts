@@ -14,8 +14,7 @@ type DivRef =
 
 export const useSize = (sizeName: "height" | "width", externalRef?: DivRef) => {
 	const internalRef = useRef<HTMLDivElement>(null);
-	const ref = (externalRef ??
-		internalRef) as MutableRefObject<HTMLDivElement | null>;
+	const ref = (externalRef ?? internalRef) as DivRef;
 
 	const [size, setSize] = useState<number | undefined>(undefined);
 
