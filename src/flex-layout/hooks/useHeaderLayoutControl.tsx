@@ -1,18 +1,14 @@
 "use client";
 
 import {
-	mathGrow,
-	resize,
-	useDecompositionLayout,
-} from "@byeolnaerim/flex-layout";
-
-import {
 	createRxStateTuple,
 	type RxStateStorageOptions,
 } from "@byeolnaerim/global-rx-state";
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { animationFrameScheduler, auditTime, fromEvent } from "rxjs";
+import { useDecompositionLayout } from "../providers";
+import { mathGrow, resize } from "../utils";
 const ROUTE_RATIO_EPSILON = 0.02;
 const ROUTE_SYNC_MAX_FRAMES = 24;
 const ROUTE_SYNC_REQUIRED_STABLE_FRAMES = 3;

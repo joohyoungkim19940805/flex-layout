@@ -54,34 +54,34 @@
 			"default": "./dist/index.js"
 		},
 		"./components": {
-			"types": "./dist/components.d.ts",
-			"import": "./dist/components.js",
-			"require": "./dist/components.cjs",
-			"default": "./dist/components.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./hooks": {
-			"types": "./dist/hooks.d.ts",
-			"import": "./dist/hooks.js",
-			"require": "./dist/hooks.cjs",
-			"default": "./dist/hooks.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./providers": {
-			"types": "./dist/providers.d.ts",
-			"import": "./dist/providers.js",
-			"require": "./dist/providers.cjs",
-			"default": "./dist/providers.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./utils": {
-			"types": "./dist/utils.d.ts",
-			"import": "./dist/utils.js",
-			"require": "./dist/utils.cjs",
-			"default": "./dist/utils.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./store": {
-			"types": "./dist/store.d.ts",
-			"import": "./dist/store.js",
-			"require": "./dist/store.cjs",
-			"default": "./dist/store.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		}
 	},
 	"scripts": {

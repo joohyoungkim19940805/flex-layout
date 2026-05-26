@@ -1,3 +1,3 @@
 export * from "./useDrag";
-export * from "./useHeaderLayoutControl";
+export { default as useHeaderLayoutControl } from "./useHeaderLayoutControl";
 export * from "./useListPaging";

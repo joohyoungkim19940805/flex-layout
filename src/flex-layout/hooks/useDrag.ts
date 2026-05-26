@@ -1,4 +1,5 @@
 import equal from "fast-deep-equal/react";
+import { createRxStateTuple } from "@byeolnaerim/global-rx-state";
 import {
 	MouseEvent,
 	ReactElement,
@@ -12,7 +13,6 @@ import {
 import {
 	animationFrameScheduler,
 	auditTime,
-	BehaviorSubject,
 	distinctUntilChanged,
 	map,
 	Subject,
@@ -76,7 +76,10 @@ export const dragStateSubject = new Subject<DragStateType>();
  */
 export const dragState = dragStateSubject;
 
-export const isResizingSubject = new BehaviorSubject<boolean>(false);
+export const [, , useIsResizing, isResizingSubject] = createRxStateTuple<boolean>(
+	false,
+	"__flexLayoutIsResizing",
+);
 
 export const resizeDragSubject: Subject<ResizeDragEvent> =
 	new Subject<ResizeDragEvent>();
@@ -191,7 +194,8 @@ export interface DropTargetComponentEvent extends Omit<
 }
 export const dropMovementEventSubject = new Subject<DropMovementEventType>();
 
-export const allSplitScreenCount = new BehaviorSubject<number>(0);
+export const [, , useAllSplitScreenCount, allSplitScreenCount] =
+	createRxStateTuple<number>(0, "__flexLayoutAllSplitScreenCount");
 
 export const useDragEvents = ({
 	isBlockingActiveInput = false,

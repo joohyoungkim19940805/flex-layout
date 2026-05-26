@@ -1,28 +1,18 @@
 "use client";
 import equal from "fast-deep-equal/react";
+import { createRxStateTuple } from "@byeolnaerim/global-rx-state";
 import { RefObject } from "react";
-import { BehaviorSubject, combineLatest } from "rxjs";
+import { combineLatest } from "rxjs";
 import { distinctUntilChanged, filter, map } from "rxjs/operators";
 import { DropTargetComponent } from "../hooks/useDrag";
 
 /**
- * 이전 값과 새 값이 동일하지 않을 때만 store를 업데이트하는 유틸 함수
+ * Keep global layout stores backed by @byeolnaerim/global-rx-state so every
+ * consumer of this package shares the same singleton store instance.
+ *
+ * These stores intentionally use in-memory storage because they contain DOM refs
+ * and React elements, which are not serializable persistence data.
  */
-function updateScrollStore<T>(subject: BehaviorSubject<T>, newValue: T) {
-	// const currentValue = subject.getValue();
-	// deep 비교를 통해 실제 변경이 있는 경우만 next
-	// if (!equal(currentValue, newValue)) {
-	subject.next(newValue);
-	// }
-}
-
-function updateSplitScreenStore(newValue: LayoutSplitScreenState) {
-	// const prevValue = layoutSplitScreenStore.getValue();
-	// deep-equal 로 비교
-	// if (!equal(prevValue, newValue)) {
-	layoutSplitScreenStore.next(newValue);
-	// }
-}
 
 // 구독 시 이전 상태들을 축적하여 관리
 // const stateWithHistory$ = flexContainerStore.pipe(
@@ -36,9 +26,11 @@ export interface ScrollPosition {
 
 export const scrollPositions: Record<string, ScrollPosition> = {};
 
-const scrollPositionsSubject = new BehaviorSubject<
-	Record<string, ScrollPosition>
->(scrollPositions);
+const [setScrollPositionsStore, getScrollPositionsStore, , scrollPositionsSubject] =
+	createRxStateTuple<Record<string, ScrollPosition>>(
+		scrollPositions,
+		"__flexLayoutScrollPositions",
+	);
 
 /**
  * 스크롤 위치 업데이트 함수
@@ -49,7 +41,7 @@ export const setScrollPosition = (
 	layoutName: string,
 	position: ScrollPosition,
 ) => {
-	const current = scrollPositionsSubject.getValue();
+	const current = getScrollPositionsStore();
 	const prevPos = current[layoutName];
 
 	// x, y 모두 동일하면 업데이트할 필요가 없으므로 조기 반환
@@ -63,7 +55,7 @@ export const setScrollPosition = (
 		[layoutName]: position,
 	};
 
-	updateScrollStore(scrollPositionsSubject, newPositions);
+	setScrollPositionsStore(newPositions);
 };
 
 /**
@@ -80,9 +72,9 @@ export const getScrollPosition = (layoutName: string) => {
 	);
 };
 export const removeScrollPosition = (layoutName: string) => {
-	const current = scrollPositionsSubject.getValue();
+	const current = getScrollPositionsStore();
 	const { [layoutName]: _, ...rest } = current;
-	updateScrollStore(scrollPositionsSubject, rest);
+	setScrollPositionsStore(rest);
 };
 
 export type SplitScreenComponents = {
@@ -97,15 +89,22 @@ export type LayoutSplitScreenState = Record<
 	Record<string, SplitScreenComponents>
 >;
 
-export const layoutSplitScreenStore =
-	new BehaviorSubject<LayoutSplitScreenState>({});
+export const [
+	setLayoutSplitScreenStore,
+	getLayoutSplitScreenStore,
+	useLayoutSplitScreenStore,
+	layoutSplitScreenStore,
+] = createRxStateTuple<LayoutSplitScreenState>(
+	{},
+	"__flexLayoutSplitScreen",
+);
 
 export const setSplitScreen = (
 	rootName: string,
 	layoutName: string,
 	newComponents: SplitScreenComponents,
 ) => {
-	const current = layoutSplitScreenStore.getValue();
+	const current = getLayoutSplitScreenStore();
 	const updatedLayout = { ...(current[rootName] || {}) };
 	updatedLayout[layoutName] = newComponents;
 
@@ -113,31 +112,31 @@ export const setSplitScreen = (
 		...current,
 		[rootName]: updatedLayout,
 	};
-	updateSplitScreenStore(newStoreValue);
+	setLayoutSplitScreenStore(newStoreValue);
 };
 
 export const resetRootSplitScreen = (rootName: string) => {
-	const current = layoutSplitScreenStore.getValue();
+	const current = getLayoutSplitScreenStore();
 	// rootName 아래만 초기화
 	const newStoreValue = {
 		...current,
 		[rootName]: {},
 	};
-	updateSplitScreenStore(newStoreValue);
+	setLayoutSplitScreenStore(newStoreValue);
 };
 
 export const removeRootSplitScreen = (rootName: string) => {
-	const current = layoutSplitScreenStore.getValue();
+	const current = getLayoutSplitScreenStore();
 	if (!current[rootName]) return;
 	const { [rootName]: _, ...rest } = current;
-	updateSplitScreenStore(rest);
+	setLayoutSplitScreenStore(rest);
 };
 
 export const removeSplitScreenChild = (
 	rootName: string,
 	layoutName: string,
 ) => {
-	const current = layoutSplitScreenStore.getValue();
+	const current = getLayoutSplitScreenStore();
 	if (!current[rootName]) return;
 
 	const updatedLayout = { ...current[rootName] };
@@ -147,14 +146,14 @@ export const removeSplitScreenChild = (
 		...current,
 		[rootName]: updatedLayout,
 	};
-	updateSplitScreenStore(newStoreValue);
+	setLayoutSplitScreenStore(newStoreValue);
 };
 
 export const getCurrentSplitScreenComponents = (
 	rootName: string,
 	layoutName: string,
 ) => {
-	const current = layoutSplitScreenStore.getValue();
+	const current = getLayoutSplitScreenStore();
 	if (!current[rootName]) return;
 	return current[rootName][layoutName];
 };
@@ -182,10 +181,19 @@ type RefStore = {
 	};
 };
 
-// 초기값으로 빈 객체를 설정한 BehaviorSubject 생성
-export const flexContainerStore = new BehaviorSubject<RefStore>({});
+export const [
+	setFlexContainerStore,
+	getFlexContainerStore,
+	useFlexContainerStore,
+	flexContainerStore,
+] = createRxStateTuple<RefStore>({}, "__flexLayoutContainerRefs");
 
-export const flexResizePanelStore = new BehaviorSubject<RefStore>({});
+export const [
+	setFlexResizePanelStore,
+	getFlexResizePanelStore,
+	useFlexResizePanelStore,
+	flexResizePanelStore,
+] = createRxStateTuple<RefStore>({}, "__flexLayoutResizePanelRefs");
 /**
  * ref를 업데이트하는 함수
  * - 기존: 무조건 next() → 새/이전 상태 비교 후 다를 경우에만 next()
@@ -195,7 +203,7 @@ export const setContainerRef = <T extends HTMLElement>(
 	containerName: string,
 	ref: RefObject<T | null> | null,
 ) => {
-	const currentRefs = flexContainerStore.getValue();
+	const currentRefs = getFlexContainerStore();
 	const layoutRefs = currentRefs[layoutName] || {};
 
 	if (ref === null) {
@@ -208,13 +216,13 @@ export const setContainerRef = <T extends HTMLElement>(
 						return rest;
 					})()
 				: { ...currentRefs, [layoutName]: restLayout };
-		flexContainerStore.next(next);
+		setFlexContainerStore(next);
 		return;
 	}
 
 	if (layoutRefs[containerName] === ref) return; // 동일 ref면 skip
 
-	flexContainerStore.next({
+	setFlexContainerStore({
 		...currentRefs,
 		[layoutName]: { ...layoutRefs, [containerName]: ref },
 	});
@@ -225,7 +233,7 @@ export const setResizePanelRef = <T extends HTMLElement>(
 	containerName: string,
 	ref: RefObject<T | null> | null,
 ) => {
-	const currentRefs = flexResizePanelStore.getValue();
+	const currentRefs = getFlexResizePanelStore();
 	const layoutRefs = currentRefs[layoutName] || {};
 
 	if (ref === null) {
@@ -238,13 +246,13 @@ export const setResizePanelRef = <T extends HTMLElement>(
 						return rest;
 					})()
 				: { ...currentRefs, [layoutName]: restLayout };
-		flexResizePanelStore.next(next);
+		setFlexResizePanelStore(next);
 		return;
 	}
 
 	if (layoutRefs[containerName] === ref) return; // 동일 ref면 skip
 
-	flexResizePanelStore.next({
+	setFlexResizePanelStore({
 		...currentRefs,
 		[layoutName]: { ...layoutRefs, [containerName]: ref },
 	});
