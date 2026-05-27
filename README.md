@@ -88,6 +88,25 @@ import { FlexLayout } from "@byeolnaerim/flex-layout";
   Class name for customizing the resize panel style.
 - `panelMovementMode?: "default" | "bulldozer"`  
   How adjacent panels are pushed during resizing.
+- `rememberResize?: { storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"; keyName?: string; name?: string; storeName?: string; keyPrefix?: string }`  
+  Persists the latest resize `grow` map for all containers in this layout. Resize memory is configured on `FlexLayout`, not on each `FlexLayoutContainer`, because each grow value is part of the same distributed layout. When omitted, resize memory is disabled and no in-memory store is created.
+
+```tsx
+<FlexLayout
+	layoutName="basic-row_1"
+	direction="row"
+	rememberResize={{ storage: "sessionstorage" }}
+>
+	<FlexLayoutContainer containerName="left" isResizePanel>
+		<div>Left</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="right">
+		<div>Right</div>
+	</FlexLayoutContainer>
+</FlexLayout>
+```
+
+  By default, the persistence key is `__flexLayoutResizeGrow:${layoutName}`. Use `keyName` when multiple layouts need to share or separate a custom persisted resize state.
 
 ---
 

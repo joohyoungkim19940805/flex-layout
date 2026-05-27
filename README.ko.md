@@ -320,6 +320,25 @@ import { FlexLayout } from "@byeolnaerim/flex-layout";
   리사이즈 패널 커스텀 스타일을 위한 클래스입니다.
 - `panelMovementMode?: "bulldozer" | "divorce" | "stalker"`  
   패널 리사이즈 시 인접 패널과의 상호작용 방식을 설정합니다. 기본값은 `"divorce"`입니다.
+- `rememberResize?: { storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"; keyName?: string; name?: string; storeName?: string; keyPrefix?: string }`  
+  이 레이아웃에 포함된 모든 컨테이너의 최신 리사이즈 `grow` map을 기억합니다. `grow` 값은 `FlexLayout` 전체에서 함께 분배되는 값이므로, 기억 옵션은 개별 `FlexLayoutContainer`가 아니라 `FlexLayout`에 설정합니다. 생략하면 리사이즈 기억 기능은 꺼지고, in-memory store도 만들지 않습니다.
+
+```tsx
+<FlexLayout
+	layoutName="basic-row_1"
+	direction="row"
+	rememberResize={{ storage: "sessionstorage" }}
+>
+	<FlexLayoutContainer containerName="left" isResizePanel>
+		<div>Left</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="right">
+		<div>Right</div>
+	</FlexLayoutContainer>
+</FlexLayout>
+```
+
+  기본 persistence key는 `__flexLayoutResizeGrow:${layoutName}`입니다. 여러 레이아웃이 resize 기억값을 공유하거나 분리해야 한다면 `keyName`을 지정하세요.
 
 ---
 

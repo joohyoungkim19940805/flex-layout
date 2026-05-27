@@ -15,6 +15,27 @@ import {
 } from "rxjs";
 import styles from "./../styles/sentinelStyle.module.css";
 
+/**
+ * Synchronizes a target element's `height` and `minHeight` with its measured
+ * content height and viewport-relative minimum height.
+ *
+ * This component is useful for window-scroll based FlexLayout trees where the
+ * browser document must keep a stable scroll height even while nested flex
+ * containers resize, collapse, or restore themselves.
+ *
+ * When `targetRef` is provided, that element is controlled.
+ * When `targetRef` is omitted, the component controls its parent element.
+ *
+ * A common root-layout usage is rendering this component directly under
+ * `<body>`, so the document body height is continuously synchronized with the
+ * rendered content.
+ *
+ * This component intentionally mutates `height` and `minHeight`.
+ * It is complementary to `useFlexLayoutControl`; it does not replace it.
+ *
+ * - `FlexLayoutDynamicHeight` stabilizes document/target height for scrolling.
+ * - `useFlexLayoutControl` controls a decomposition container by flex-grow.
+ */
 export default function FlexLayoutDynamicHeight({
 	extraHeight = 0,
 	extraHeightUnit = "px",

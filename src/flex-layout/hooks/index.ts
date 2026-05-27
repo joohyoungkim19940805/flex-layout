@@ -1,3 +1,8 @@
 export * from "./useDrag";
-export { default as useHeaderLayoutControl } from "./useHeaderLayoutControl";
+export {
+	createContainerSizeState,
+	useFlexLayoutControl,
+	type CreateContainerSizeStateParams,
+	type UseFlexLayoutControlParams,
+} from "./useFlexLayoutControl";
 export * from "./useListPaging";

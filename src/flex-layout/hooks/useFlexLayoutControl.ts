@@ -9,6 +9,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { animationFrameScheduler, auditTime, fromEvent } from "rxjs";
 import { useDecompositionLayout } from "../providers";
 import { mathGrow, resize } from "../utils";
+
 const ROUTE_RATIO_EPSILON = 0.02;
 const ROUTE_SYNC_MAX_FRAMES = 24;
 const ROUTE_SYNC_REQUIRED_STABLE_FRAMES = 3;
@@ -24,61 +25,87 @@ function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
 }
 
-type UseHeaderLayoutControlParams = {
+export type UseFlexLayoutControlParams = {
+	/**
+	 * Decomposition layout name containing the target flex container.
+	 */
+	layoutName: string;
+
+	/**
+	 * Decomposition container name to control by flex-grow.
+	 *
+	 * The target container is expected to be a direct child of a flex layout
+	 * parent that provides `data-direction="row"` or `data-direction="column"`.
+	 */
+	containerName: string;
+
 	/**
 	 * Current route pathname.
 	 *
-	 * Used to detect route changes and preserve the current header visibility
-	 * ratio across pages.
+	 * Used to detect route changes and preserve the current main-axis size ratio
+	 * across pages.
 	 */
 	pathname: string;
 
 	/**
-	 * Indicates that the header visibility is controlled by an external
-	 * route/layout condition.
+	 * Explicitly controls whether the target container is hidden or shown.
 	 *
-	 * When true, this hook disables scroll-based header hiding and restores any
-	 * header state that was previously hidden by scroll. The actual hidden state
-	 * is expected to be handled outside of this hook.
+	 * - `true`: collapses the target container to flex-grow 0 and disables
+	 *   scroll-based automatic hide/show.
+	 * - `false`: restores the target container and disables scroll-based
+	 *   automatic hide/show.
+	 * - `null` or `undefined`: does not explicitly control visibility. In this
+	 *   state, `enableScrollHideOnScroll` controls whether scroll-based
+	 *   automatic hide/show is enabled.
 	 */
-	hideHeader: boolean;
+	hideContainer?: boolean | null;
 
 	/**
-	 * Enables automatic header hiding while scrolling.
+	 * Enables automatic container collapsing while scrolling.
 	 *
-	 * When true, the header hides on downward scroll and reappears on upward
-	 * scroll or when the page returns to the top. This option has no effect when
-	 * `hideHeader` is true.
+	 * When true and `hideContainer` is `null` or `undefined`, the target
+	 * container collapses on downward scroll and expands on upward scroll or
+	 * when the page returns to the top. This is implemented by changing the
+	 * container's flex-grow value, not by directly setting height, width,
+	 * display, or visibility.
+	 *
+	 * This option has no effect when `hideContainer` is explicitly `true` or
+	 * `false`.
 	 */
 	enableScrollHideOnScroll: boolean;
 
 	/**
-	 * Named key used by global-rx-state to store the measured header height.
+	 * Named key used by global-rx-state to store the measured main-axis size of
+	 * the target container.
 	 *
-	 * This is useful when multiple layouts or applications use the same hook and
-	 * need independent header-height stores. The default key intentionally uses a
-	 * double-underscore prefix to reduce collisions with application-level state.
+	 * The measured axis is resolved from the parent flex layout direction:
+	 * - `data-direction="column"` stores height.
+	 * - `data-direction="row"` stores width.
 	 *
-	 * @default "__headerHeight"
+	 * When omitted, the key is derived from `layoutName` and `containerName`.
+	 *
+	 * @default `__${layoutName}_${containerName}Size`
 	 */
-	headerHeightKeyName?: string;
+	containerSizeKeyName?: string;
 
 	/**
 	 * Storage options passed to global-rx-state.
 	 *
 	 * When omitted, global-rx-state uses its default in-memory storage behavior.
 	 */
-	headerHeightStorageOptions?: RxStateStorageOptions;
+	containerSizeStorageOptions?: RxStateStorageOptions;
 };
 
-export default function useHeaderLayoutControl({
+export function useFlexLayoutControl({
+	layoutName,
+	containerName,
 	pathname,
-	hideHeader,
+	hideContainer,
 	enableScrollHideOnScroll,
-	headerHeightKeyName = "__headerHeight",
-	headerHeightStorageOptions,
-}: UseHeaderLayoutControlParams) {
-	const appBarRef = useRef<HTMLDivElement | null>(null);
+	containerSizeKeyName = `__${layoutName}_${containerName}Size`,
+	containerSizeStorageOptions,
+}: UseFlexLayoutControlParams) {
+	const contentRef = useRef<HTMLDivElement | null>(null);
 	const lastPathnameRef = useRef<string>(pathname);
 
 	const routeSyncRafRef = useRef<number>(0);
@@ -93,22 +120,22 @@ export default function useHeaderLayoutControl({
 
 	const currentGrowRef = useRef(0);
 	const lastExpandedGrowRef = useRef(0);
-	const headerHiddenByScrollRef = useRef(false);
+	const containerHiddenByScrollRef = useRef(false);
 	const lastScrollYRef = useRef(0);
 	const scrollPivotYRef = useRef(0);
 	const lastScrollDirectionRef = useRef<-1 | 0 | 1>(0);
 
 	const transitionCleanupRef = useRef<(() => void) | null>(null);
 
-	const [setHeaderHeight] = createRxStateTuple(
+	const [setContainerSize] = createRxStateTuple(
 		0,
-		headerHeightKeyName,
-		headerHeightStorageOptions,
+		containerSizeKeyName,
+		containerSizeStorageOptions,
 	);
 
 	const { layout: containers, container } = useDecompositionLayout({
-		layoutName: "root",
-		containerName: "head",
+		layoutName,
+		containerName,
 	});
 
 	const clearFlexTransition = useCallback(() => {
@@ -247,7 +274,7 @@ export default function useHeaderLayoutControl({
 	}, [container, containers]);
 
 	const hideByScroll = useCallback(() => {
-		if (!container || headerHiddenByScrollRef.current) return;
+		if (!container || containerHiddenByScrollRef.current) return;
 
 		const currentGrow = readCurrentGrow();
 
@@ -255,7 +282,7 @@ export default function useHeaderLayoutControl({
 			lastExpandedGrowRef.current = currentGrow;
 		}
 
-		headerHiddenByScrollRef.current = true;
+		containerHiddenByScrollRef.current = true;
 
 		applyContainerGrow(0, {
 			animate: true,
@@ -272,7 +299,7 @@ export default function useHeaderLayoutControl({
 					? lastExpandedGrowRef.current
 					: containers?.length || 1;
 
-			headerHiddenByScrollRef.current = false;
+			containerHiddenByScrollRef.current = false;
 
 			applyContainerGrow(nextGrow, {
 				animate,
@@ -283,23 +310,23 @@ export default function useHeaderLayoutControl({
 	);
 
 	const getVisibleHeight = useCallback(() => {
-		const target = container ?? appBarRef.current;
+		const target = container ?? contentRef.current;
 		if (!target) return 0;
 
 		return Math.max(0, Math.ceil(target.getBoundingClientRect().height));
 	}, [container]);
 
 	const getContentHeight = useCallback(() => {
-		const appBar = appBarRef.current;
-		if (!appBar) return 0;
+		const content = contentRef.current;
+		if (!content) return 0;
 
 		return Math.max(
 			0,
 			Math.ceil(
 				Math.max(
-					appBar.scrollHeight || 0,
-					appBar.offsetHeight || 0,
-					appBar.getBoundingClientRect().height || 0,
+					content.scrollHeight || 0,
+					content.offsetHeight || 0,
+					content.getBoundingClientRect().height || 0,
 				),
 			),
 		);
@@ -333,7 +360,7 @@ export default function useHeaderLayoutControl({
 			containers.length,
 		);
 
-		if (headerHiddenByScrollRef.current) {
+		if (containerHiddenByScrollRef.current) {
 			lastExpandedGrowRef.current = newGrow;
 			return true;
 		}
@@ -352,6 +379,7 @@ export default function useHeaderLayoutControl({
 			cancelAnimationFrame(routeSyncRafRef.current);
 			routeSyncRafRef.current = 0;
 		}
+
 		routeSyncFrameCountRef.current = 0;
 		routeSyncStableCountRef.current = 0;
 		preservedRatioOnRouteChangeRef.current = null;
@@ -444,7 +472,7 @@ export default function useHeaderLayoutControl({
 	}, [pathname, startRouteSync]);
 
 	useEffect(() => {
-		const target = container ?? appBarRef.current;
+		const target = container ?? contentRef.current;
 		const parent = container?.parentElement ?? null;
 
 		if (!target) return;
@@ -465,7 +493,7 @@ export default function useHeaderLayoutControl({
 			currentContentHeightRef.current = contentHeight;
 			currentRatioRef.current = ratio;
 
-			setHeaderHeight(visibleHeight);
+			setContainerSize(visibleHeight);
 		};
 
 		const scheduleMeasure = () => {
@@ -485,8 +513,8 @@ export default function useHeaderLayoutControl({
 
 		resizeObserver.observe(target);
 
-		if (appBarRef.current && appBarRef.current !== target) {
-			resizeObserver.observe(appBarRef.current);
+		if (contentRef.current && contentRef.current !== target) {
+			resizeObserver.observe(contentRef.current);
 		}
 
 		if (parent && parent !== target) {
@@ -526,24 +554,26 @@ export default function useHeaderLayoutControl({
 		container,
 		getContentHeight,
 		getVisibleHeight,
+		setContainerSize,
 		startRouteSync,
 	]);
 
 	useEffect(() => {
-		if (hideHeader || !enableScrollHideOnScroll) {
-			lastScrollYRef.current = window.scrollY;
-			scrollPivotYRef.current = window.scrollY;
-			lastScrollDirectionRef.current = 0;
+		lastScrollYRef.current = window.scrollY;
+		scrollPivotYRef.current = window.scrollY;
+		lastScrollDirectionRef.current = 0;
 
-			if (headerHiddenByScrollRef.current) {
+		if (hideContainer === true) {
+			hideByScroll();
+			return;
+		}
+
+		if (hideContainer === false || !enableScrollHideOnScroll) {
+			if (containerHiddenByScrollRef.current) {
 				showByScroll(false);
 			}
 			return;
 		}
-
-		lastScrollYRef.current = window.scrollY;
-		scrollPivotYRef.current = window.scrollY;
-		lastScrollDirectionRef.current = 0;
 
 		const scrollSubscription = fromEvent(window, "scroll", {
 			passive: true,
@@ -579,7 +609,7 @@ export default function useHeaderLayoutControl({
 
 				if (
 					nextDirection > 0 &&
-					!headerHiddenByScrollRef.current &&
+					!containerHiddenByScrollRef.current &&
 					accumulatedDiff >= SCROLL_HIDE_THRESHOLD
 				) {
 					hideByScroll();
@@ -588,7 +618,7 @@ export default function useHeaderLayoutControl({
 
 				if (
 					nextDirection < 0 &&
-					headerHiddenByScrollRef.current &&
+					containerHiddenByScrollRef.current &&
 					accumulatedDiff <= -SCROLL_SHOW_THRESHOLD
 				) {
 					showByScroll(true);
@@ -601,11 +631,11 @@ export default function useHeaderLayoutControl({
 		return () => {
 			scrollSubscription.unsubscribe();
 
-			if (headerHiddenByScrollRef.current) {
+			if (containerHiddenByScrollRef.current) {
 				showByScroll(false);
 			}
 		};
-	}, [enableScrollHideOnScroll, hideByScroll, hideHeader, showByScroll]);
+	}, [enableScrollHideOnScroll, hideByScroll, hideContainer, showByScroll]);
 
 	useEffect(() => {
 		return () => {
@@ -615,6 +645,59 @@ export default function useHeaderLayoutControl({
 	}, [clearFlexTransition, stopRouteSync]);
 
 	return {
-		appBarRef,
+		contentRef,
 	};
+}
+
+export type CreateContainerSizeStateParams = {
+	/**
+	 * Named key used by global-rx-state to access the container size store.
+	 *
+	 * Use the same value as `containerSizeKeyName` passed to
+	 * `useFlexLayoutControl`.
+	 *
+	 * @example "__main_sidebarSize"
+	 */
+	containerSizeKeyName: string;
+
+	/**
+	 * Storage options passed to global-rx-state.
+	 *
+	 * Use the same value as `containerSizeStorageOptions` passed to
+	 * `useFlexLayoutControl`. The storage option is part of the named store
+	 * identity, so changing it can point to a different store.
+	 */
+	containerSizeStorageOptions?: RxStateStorageOptions;
+};
+
+/**
+ * Creates or retrieves the global-rx-state tuple used by flex-layout to store
+ * a measured container size.
+ *
+ * If the consuming project directly depends on
+ * `@byeolnaerim/global-rx-state`, it may call `createRxStateTuple` with the
+ * same `containerSizeKeyName` and `containerSizeStorageOptions`.
+ *
+ * If the consuming project does not directly depend on
+ * `@byeolnaerim/global-rx-state`, use this helper instead. It exposes the same
+ * container size state through flex-layout without requiring consumers to import
+ * `@byeolnaerim/global-rx-state` directly.
+ *
+ * The returned tuple is:
+ *
+ * - `setContainerSize`
+ * - `getContainerSize`
+ * - `useContainerSize`
+ * - `containerSizeSubject`
+ * - `containerSizeReady`
+ */
+export function createContainerSizeState({
+	containerSizeKeyName,
+	containerSizeStorageOptions,
+}: CreateContainerSizeStateParams) {
+	return createRxStateTuple(
+		0,
+		containerSizeKeyName,
+		containerSizeStorageOptions,
+	);
 }

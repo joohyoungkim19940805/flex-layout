@@ -35,10 +35,11 @@
 		"url": "https://github.com/joohyoungkim19940805/flex-layout/issues"
 	},
 	"files": [
-		"dist/**/*.js",
-		"dist/**/*.cjs",
-		"dist/**/*.d.ts",
-		"dist/**/*.css"
+		"dist",
+		"LICENSE",
+		"README.md",
+		"README.en.md",
+		"README.ko.md"
 	],
 	"sideEffects": [
 		"**/*.css"
@@ -91,10 +92,19 @@
 		"prepack": "npm run build",
 		"prepare": "npm run build"
 	},
+	"peerDependencies": {
+		"react": ">=18 <20",
+		"react-dom": ">=18 <20"
+	},
+	"dependencies": {
+		"@byeolnaerim/global-rx-state": ">=0.0.1 <0.1.0",
+		"fast-deep-equal": "^3.1.3",
+		"rxjs": ">=7"
+	},
 	"devDependencies": {
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
-		"@byeolnaerim/global-rx-state": "0.0.1",
+		"@byeolnaerim/global-rx-state": "0.0.2",
 		"esbuild-plugin-preserve-directives": "^0.0.11",
 		"cpy-cli": "^5",
 		"react": "^19.2.6",
@@ -102,16 +112,6 @@
 		"rxjs": "^7.8.2",
 		"tsup": "^8.5.1",
 		"typescript": "6.0.3"
-	},
-	"peerDependencies": {
-		"react": ">=18 <20",
-		"react-dom": ">=18 <20",
-		"@byeolnaerim/global-rx-state": ">=0.0.1 <0.1.0",
-		"rxjs": ">=7"
-	},
-	"dependencies": {
-		"fast-deep-equal": "^3.1.3",
-		"rxjs": ">=7"
 	},
 	"overrides": {
 		"esbuild": "0.28.0"

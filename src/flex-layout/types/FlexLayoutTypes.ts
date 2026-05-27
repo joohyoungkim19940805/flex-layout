@@ -1,3 +1,4 @@
+import type { RxStateStorageOptions } from "@byeolnaerim/global-rx-state";
 import { HTMLAttributes, ReactElement, ReactNode } from "react";
 
 export type ResizePanelMode =
@@ -25,6 +26,31 @@ export type FitContent = "width" | "height";
  * default : layout
  */
 export type ScrollMode = "layout" | "window";
+
+export type FlexLayoutResizeMemoryOptions = Omit<
+	RxStateStorageOptions,
+	"storage"
+> & {
+	/**
+	 * Storage engine used to persist the latest grow map for this layout.
+	 *
+	 * When this option is omitted from FlexLayout, resize memory is disabled.
+	 */
+	storage: Exclude<NonNullable<RxStateStorageOptions["storage"]>, "in-memory">;
+
+	/**
+	 * Named key used by global-rx-state.
+	 *
+	 * Defaults to `__flexLayoutResizeGrow:${layoutName}`.
+	 */
+	keyName?: string;
+};
+
+export type FlexLayoutGrowMemory = {
+	getGrowMap: () => Record<string, number>;
+	setGrowMap: (growMap: Record<string, number>) => void;
+	ready: Promise<void>;
+};
 
 export type StickyMode = {
 	position: "top" | "bottom";
@@ -90,6 +116,18 @@ export interface FlexLayoutProps extends Omit<
 	 * default : layout
 	 */
 	scrollMode?: ScrollMode;
+
+	/**
+	 * Persist the latest grow values for every FlexLayoutContainer in this
+	 * layout.
+	 *
+	 * This option is layout-level because grow values are distributed across the
+	 * whole FlexLayout. Remembering only one container's grow value is not enough
+	 * to restore a valid split layout.
+	 *
+	 * When omitted, resize memory is disabled. No in-memory fallback is created.
+	 */
+	rememberResize?: FlexLayoutResizeMemoryOptions;
 }
 
 export type FlexLayoutResizePanelProps = {
@@ -110,4 +148,5 @@ export interface FlexLayoutContextValue {
 	panelClassName?: string;
 	containerCount: number;
 	fitContent: FitContent;
+	resizeMemory?: FlexLayoutGrowMemory;
 }

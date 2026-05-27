@@ -42,6 +42,7 @@ export default function FlexLayoutContainer({
 		layoutName,
 		fitContent,
 		containerCount,
+		resizeMemory,
 	} = useFlexLayoutContext();
 
 	const { ref, size } =
@@ -83,7 +84,7 @@ export default function FlexLayoutContainer({
 		[layoutName, containerName],
 	);
 
-	// 초기 SSR 시점에는 sessionStorage를 사용할 수 없으므로 일단 initialGrow를 사용
+	// Use initialGrow first. Optional persisted resize memory is restored after mount.
 	const [growState, _setGrowState] = useState<number | undefined>(
 		initialGrow,
 	);
@@ -122,23 +123,38 @@ export default function FlexLayoutContainer({
 		[],
 	);
 
-	// 클라이언트 마운트 후 sessionStorage에서 grow값을 가져와 state 업데이트 (SSR/Hydration 안정화)
+	// Restore remembered grow from the layout-level resize memory store.
+	//
+	// Grow values are distributed across every container in a FlexLayout, so
+	// persistence is configured at FlexLayout level and restored per container
+	// from the same remembered grow map.
 	useLayoutEffect(() => {
-		if (
-			typeof window == "undefined" ||
-			flexContainerNodeRef.current === null
-		)
-			return;
+		if (!resizeMemory || flexContainerNodeRef.current === null) return;
 
-		const storedGrow = sessionStorage.getItem(containerName);
-		if (storedGrow !== null) {
-			const parsed = parseFloat(storedGrow);
-			if (!isNaN(parsed)) {
-				flexContainerNodeRef.current.style.flex = `${parsed} 1 0%`;
-				setGrowState(parsed);
+		let disposed = false;
+
+		const applyRememberedGrow = () => {
+			if (disposed || flexContainerNodeRef.current === null) return;
+
+			const rememberedGrow = resizeMemory.getGrowMap()[containerName];
+
+			if (
+				typeof rememberedGrow !== "number" ||
+				!Number.isFinite(rememberedGrow)
+			) {
+				return;
 			}
-		}
-	}, [containerName, setGrowState]);
+
+			flexContainerNodeRef.current.style.flex = `${rememberedGrow} 1 0%`;
+			setGrowState(rememberedGrow);
+		};
+
+		void resizeMemory.ready.then(applyRememberedGrow);
+
+		return () => {
+			disposed = true;
+		};
+	}, [containerName, resizeMemory, setGrowState]);
 
 	// 스타일 변경 감지를 위한 MutationObserver
 	useEffect(() => {
@@ -152,6 +168,39 @@ export default function FlexLayoutContainer({
 			const n = parseFloat(m[1].trim().split(/\s+/)[0]);
 			return Number.isNaN(n) ? undefined : n;
 		};
+		const rememberCurrentLayoutGrowMap = () => {
+			if (!resizeMemory || !isUserResizingRef.current) return;
+
+			const parent = targetNode.parentElement;
+			if (!parent) return;
+
+			const growMap = Array.from(parent.children).reduce<
+				Record<string, number>
+			>((map, element) => {
+				const item = element as HTMLElement;
+				const name = item.dataset.container_name;
+
+				if (
+					!name ||
+					item.classList.contains(styles["flex-resize-panel"])
+				) {
+					return map;
+				}
+
+				const grow = getGrow(item);
+
+				if (Number.isFinite(grow)) {
+					map[name] = grow;
+				}
+
+				return map;
+			}, {});
+
+			if (Object.keys(growMap).length === 0) return;
+
+			resizeMemory.setGrowMap(growMap);
+		};
+
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
 				if (
@@ -166,13 +215,9 @@ export default function FlexLayoutContainer({
 						const oldGrow = parseOldGrowFromStyleAttr(
 							mutation.oldValue,
 						);
-						// sessionStorage에 저장
-						// sessionStorage.setItem(
-						//     containerName,
-						//     parsedGrow.toString()
-						// );
 						// state 업데이트
 						setGrowState(parsedGrow, oldGrow);
+						rememberCurrentLayoutGrowMap();
 					}
 				}
 			}
@@ -187,7 +232,7 @@ export default function FlexLayoutContainer({
 		return () => {
 			observer.disconnect();
 		};
-	}, [containerName, setGrowState]);
+	}, [resizeMemory, setGrowState]);
 
 	useEffect(() => {
 		// 컴포넌트 크기 및 설정값에 따른 사이즈 재조정

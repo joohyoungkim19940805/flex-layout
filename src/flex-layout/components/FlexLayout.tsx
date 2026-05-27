@@ -10,6 +10,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
+import { createRxStateTuple } from "@byeolnaerim/global-rx-state";
 import { ContainerOpenCloseProvider } from "../providers/FlexLayoutHooks";
 import styles from "../styles/FlexLayout.module.css";
 import {
@@ -51,6 +52,7 @@ const FlexLayout = forwardRef<HTMLDivElement, FlexLayoutProps>(
 			panelClassName,
 			panelMovementMode = "divorce",
 			scrollMode,
+			rememberResize,
 			...props
 		},
 		forwardedRef,
@@ -58,6 +60,38 @@ const FlexLayout = forwardRef<HTMLDivElement, FlexLayoutProps>(
 		const containerCount = Children.count(children);
 		const fitContent =
 			direction === "row" ? "width" : ("height" as FitContent);
+
+		const resizeMemory = useMemo(() => {
+			if (!rememberResize?.storage) {
+				return undefined;
+			}
+
+			const [setGrowMap, getGrowMap, , , ready] = createRxStateTuple<
+				Record<string, number>
+			>(
+				{},
+				rememberResize.keyName ?? `__flexLayoutResizeGrow:${layoutName}`,
+				{
+					storage: rememberResize.storage,
+					name: rememberResize.name,
+					storeName: rememberResize.storeName,
+					keyPrefix: rememberResize.keyPrefix,
+				},
+			);
+
+			return {
+				getGrowMap,
+				setGrowMap,
+				ready,
+			};
+		}, [
+			layoutName,
+			rememberResize?.keyName,
+			rememberResize?.keyPrefix,
+			rememberResize?.name,
+			rememberResize?.storage,
+			rememberResize?.storeName,
+		]);
 
 		const innerRef = useRef<HTMLDivElement | null>(null);
 		const setLayoutRef = useCallback(
@@ -136,6 +170,7 @@ const FlexLayout = forwardRef<HTMLDivElement, FlexLayoutProps>(
 				panelClassName,
 				containerCount,
 				fitContent,
+				resizeMemory,
 			}),
 			[
 				layoutName,
@@ -144,6 +179,7 @@ const FlexLayout = forwardRef<HTMLDivElement, FlexLayoutProps>(
 				panelClassName,
 				containerCount,
 				fitContent,
+				resizeMemory,
 			],
 		);
 
