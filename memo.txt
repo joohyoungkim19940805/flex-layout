@@ -7,3 +7,5 @@ npm version patch
 
 배포
 npm publish --tag alpha --access public
+
+npm dist-tag add @byeolnaerim/flex-layout@<version> latest

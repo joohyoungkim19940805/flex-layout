@@ -104,7 +104,7 @@
 	"devDependencies": {
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
-		"@byeolnaerim/global-rx-state": "0.0.2",
+		"@byeolnaerim/global-rx-state": "0.0.3",
 		"esbuild-plugin-preserve-directives": "^0.0.11",
 		"cpy-cli": "^5",
 		"react": "^19.2.6",

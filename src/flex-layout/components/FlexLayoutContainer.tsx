@@ -59,6 +59,9 @@ export default function FlexLayoutContainer({
 	const lastMaxSize = useRef<number | null>(null);
 
 	const isFirstLoadRef = useRef(false);
+	const [isResizeMemoryReady, setIsResizeMemoryReady] = useState(
+		() => !resizeMemory,
+	);
 	// const lastContainerCountRef = useRef<number | null>(null);
 
 	const handleResizingChange = useCallback((v: boolean) => {
@@ -100,6 +103,26 @@ export default function FlexLayoutContainer({
 	useEffect(() => {
 		setPrevGrowState(initialPrevGrow);
 	}, [initialPrevGrow]);
+
+	useEffect(() => {
+		let disposed = false;
+
+		if (!resizeMemory) {
+			setIsResizeMemoryReady(true);
+			return;
+		}
+
+		setIsResizeMemoryReady(false);
+		void resizeMemory.ready.then(() => {
+			if (!disposed) {
+				setIsResizeMemoryReady(true);
+			}
+		});
+
+		return () => {
+			disposed = true;
+		};
+	}, [resizeMemory]);
 
 	const setGrowState = useCallback(
 		(
@@ -235,6 +258,26 @@ export default function FlexLayoutContainer({
 	}, [resizeMemory, setGrowState]);
 
 	useEffect(() => {
+		// 기억된 리사이즈 값이 있는 레이아웃은 저장소 복원 완료 전까지
+		// fit-content 자동 보정이 먼저 실행되어 복원값을 덮어쓰지 않게 한다.
+		if (resizeMemory && !isResizeMemoryReady) return;
+
+		if (resizeMemory && !isFirstLoadRef.current) {
+			const rememberedGrow = resizeMemory.getGrowMap()[containerName];
+
+			if (
+				typeof rememberedGrow === "number" &&
+				Number.isFinite(rememberedGrow)
+			) {
+				if (typeof size === "number") {
+					lastSize.current = size;
+				}
+
+				isFirstLoadRef.current = true;
+				return;
+			}
+		}
+
 		// 컴포넌트 크기 및 설정값에 따른 사이즈 재조정
 		if (
 			!flexContainerNodeRef.current ||
@@ -340,10 +383,16 @@ export default function FlexLayoutContainer({
 		fitContent,
 		isFitContent,
 		ref,
+		resizeMemory,
+		isResizeMemoryReady,
+		containerName,
 	]);
 
 	useEffect(() => {
 		if (!flexContainerNodeRef.current) return;
+		if (resizeMemory && !isResizeMemoryReady) return;
+
+		const rememberedGrowMap = resizeMemory?.getGrowMap() ?? {};
 
 		let notGrowList: Array<HTMLElement> = [];
 		let containerList = [
@@ -353,6 +402,20 @@ export default function FlexLayoutContainer({
 			let item = e as HTMLElement;
 
 			if (item.classList.contains(styles["flex-resize-panel"])) return t;
+
+			const rememberedGrow = item.dataset.container_name
+				? rememberedGrowMap[item.dataset.container_name]
+				: undefined;
+
+			if (
+				typeof rememberedGrow === "number" &&
+				Number.isFinite(rememberedGrow)
+			) {
+				item.dataset.grow = rememberedGrow.toString();
+				item.style.flex = `${rememberedGrow} 1 0%`;
+				t -= rememberedGrow;
+				return t;
+			}
 
 			if (
 				e.hasAttribute("data-grow") == false ||
@@ -373,7 +436,7 @@ export default function FlexLayoutContainer({
 				e.style.flex = `${resizeWeight} 1 0%`;
 			});
 		}
-	}, []);
+	}, [resizeMemory, isResizeMemoryReady]);
 
 	useEffect(() => {
 		if (!stickyMode) return;
