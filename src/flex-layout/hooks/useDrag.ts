@@ -1,5 +1,5 @@
-import equal from "fast-deep-equal/react";
 import { createRxStateTuple } from "@byeolnaerim/global-rx-state";
+import equal from "fast-deep-equal/react";
 import {
 	MouseEvent,
 	ReactElement,
@@ -76,10 +76,8 @@ export const dragStateSubject = new Subject<DragStateType>();
  */
 export const dragState = dragStateSubject;
 
-export const [, , useIsResizing, isResizingSubject] = createRxStateTuple<boolean>(
-	false,
-	"__flexLayoutIsResizing",
-);
+export const [, , useIsResizing, isResizingSubject] =
+	createRxStateTuple<boolean>(false, "__flexLayoutIsResizing");
 
 export const resizeDragSubject: Subject<ResizeDragEvent> =
 	new Subject<ResizeDragEvent>();
@@ -202,26 +200,21 @@ export const useDragEvents = ({
 }: {
 	isBlockingActiveInput?: boolean;
 }) => {
-	const dragResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const dragStartDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(
 		null,
 	);
 
-	const scrollThreshold = 10; // 이동 거리 임계값
+	const scrollThreshold = 10;
 
 	const isScrolling = useRef<boolean>(false);
 	const isPending = useRef(false);
 	const isMouseDown = useRef(false);
-	const isDragging = useRef(false); // 드래그 상태 플래그
+	const isDragging = useRef(false);
 	const touchStartX = useRef<number>(0);
 	const touchStartY = useRef<number>(0);
 
 	useEffect(() => {
 		return () => {
-			if (dragResumeTimer.current) {
-				clearTimeout(dragResumeTimer.current);
-				dragResumeTimer.current = null;
-			}
 			if (dragStartDelayTimer.current) {
 				clearTimeout(dragStartDelayTimer.current);
 				dragStartDelayTimer.current = null;
@@ -239,11 +232,6 @@ export const useDragEvents = ({
 		}) => {
 			const event = _event instanceof Event ? _event : _event.nativeEvent;
 
-			// 기존 타이머가 있다면 정리
-			if (dragResumeTimer.current) {
-				clearTimeout(dragResumeTimer.current);
-				dragResumeTimer.current = null;
-			}
 			if (dragStartDelayTimer.current) {
 				clearTimeout(dragStartDelayTimer.current);
 				dragStartDelayTimer.current = null;
@@ -256,51 +244,32 @@ export const useDragEvents = ({
 			) {
 				return;
 			}
-			if (event.cancelable && !(event instanceof globalThis.TouchEvent)) {
-				event.preventDefault(); // cancelable=false 면 자동 skip
-			}
+
+			const xy = getClientXy(event);
+			if (!xy) return;
+
+			touchStartX.current = xy.clientX;
+			touchStartY.current = xy.clientY;
 
 			isPending.current = true;
 			isMouseDown.current = true;
 			isScrolling.current = false;
+			isDragging.current = false;
 
-			// if (event instanceof globalThis.TouchEvent) {
-			// 	const touch = event.touches[0];
-			// 	touchStartX.current = touch.clientX;
-			// 	touchStartY.current = touch.clientY;
-			// } else if (event instanceof globalThis.MouseEvent) {
-			// 	touchStartX.current = event.clientX;
-			// 	touchStartY.current = event.clientY;
-			// }
-
-			const xy = getClientXy(event);
-			if (!xy) return;
-			touchStartX.current = xy.clientX;
-			touchStartY.current = xy.clientY;
-
-			if (
-				event.type.toLowerCase().startsWith("touch") ||
-				event instanceof globalThis.TouchEvent
-			) {
-				isPending.current = false;
-				isDragging.current = true;
-
-				dragStartCallback({ x: xy.clientX, y: xy.clientY });
-				return;
+			if (event.cancelable && !(event instanceof globalThis.TouchEvent)) {
+				event.preventDefault();
 			}
 
-			//event.preventDefault();
 			dragStartDelayTimer.current = setTimeout(() => {
-				if (!isPending.current || isScrolling.current) return; // 스크롤 중이면 드래그 취소
+				if (!isPending.current || isScrolling.current) return;
+
 				isPending.current = false;
 				isDragging.current = true;
 
-				const xy = getClientXy(event);
-				if (!xy) return;
-
-				const { clientX, clientY } = xy;
-
-				dragStartCallback({ x: clientX, y: clientY });
+				dragStartCallback({
+					x: touchStartX.current,
+					y: touchStartY.current,
+				});
 			}, 300);
 		},
 		[isBlockingActiveInput],
@@ -310,7 +279,6 @@ export const useDragEvents = ({
 		({
 			event: _event,
 			notDragCallback,
-			dragStartCallback,
 			moveingCallback,
 		}: {
 			event: MouseEvent | TouchEvent | Event;
@@ -319,10 +287,12 @@ export const useDragEvents = ({
 			moveingCallback: ({ x, y }: { x: number; y: number }) => void;
 		}) => {
 			if (!isMouseDown.current) return;
+
 			const event = _event instanceof Event ? _event : _event.nativeEvent;
 
 			const xy = getClientXy(event);
 			if (!xy) return;
+
 			const { clientX, clientY } = xy;
 			const deltaX = Math.abs(clientX - touchStartX.current);
 			const deltaY = Math.abs(clientY - touchStartY.current);
@@ -338,41 +308,25 @@ export const useDragEvents = ({
 					dragStartDelayTimer.current = null;
 				}
 
-				isScrolling.current = true; // 스크롤 중으로 설정
-				isPending.current = false; // 드래그 취소
+				isScrolling.current = true;
+				isPending.current = false;
 				isDragging.current = false;
+				isMouseDown.current = false;
 
-				if (notDragCallback)
+				if (notDragCallback) {
 					notDragCallback({ x: clientX, y: clientY });
-				//if (clonedNodeRef.current) clonedNodeRef.current.remove();
-
-				if (dragResumeTimer.current) {
-					clearTimeout(dragResumeTimer.current);
-					dragResumeTimer.current = null;
 				}
-				dragResumeTimer.current = setTimeout(() => {
-					if (!isMouseDown.current) return;
-					// if (dragStartCallback)
-					// 	dragStartCallback({ x: clientX, y: clientY });
-					// isPending.current = true;
-					// isScrolling.current = false;
-					// handleStart({ event: _event, dragStartCallback });
 
-					touchStartX.current = clientX;
-					touchStartY.current = clientY;
-					isPending.current = true;
-					isScrolling.current = false;
-					handleStart({ event: _event, dragStartCallback });
-				}, 400);
 				return;
 			}
 
-			if (!isDragging.current || isPending.current) return; // 드래그 중이 아닐 경우 무시
+			if (!isDragging.current || isPending.current) return;
 
 			moveingCallback({ x: clientX, y: clientY });
 		},
-		[isBlockingActiveInput],
+		[],
 	);
+
 	const handleEnd = useCallback(
 		({
 			event: _event,
@@ -386,69 +340,30 @@ export const useDragEvents = ({
 
 			if (isPending.current) {
 				isPending.current = false;
+
 				if (dragStartDelayTimer.current) {
 					clearTimeout(dragStartDelayTimer.current);
 					dragStartDelayTimer.current = null;
 				}
+
 				return;
 			}
+
 			const event = _event instanceof Event ? _event : _event.nativeEvent;
 
-			if (!isDragging.current) return; // 드래그 중이 아닐 경우 무시
+			if (!isDragging.current) return;
 
-			isDragging.current = false; // 드래그 종료
+			isDragging.current = false;
 
 			const xy = getClientXy(event);
 			if (!xy) return;
 
-			const { clientX, clientY } = xy;
-
-			dragEndCallback({ x: clientX, y: clientY });
-			// const href = hrefUrlRef.current;
-
-			// if (clonedNodeRef.current) clonedNodeRef.current.remove();
-			// //console.log(clientX, clientY);
-			// if (
-			//     dropDocumentOutsideOption &&
-			//     isDocumentOut({ x: clientX, y: clientY })
-			// ) {
-			//     if (
-			//         dropDocumentOutsideOption.isNewTap ||
-			//         (!dropDocumentOutsideOption.widthRatio &&
-			//             !dropDocumentOutsideOption.heightRatio)
-			//     ) {
-			//         window.open(href, '_blank');
-			//     } else {
-			//         const width =
-			//             window.innerWidth *
-			//             (dropDocumentOutsideOption.widthRatio || 1);
-			//         const height =
-			//             window.innerHeight *
-			//             (dropDocumentOutsideOption.heightRatio || 1);
-			//         window.open(
-			//             href,
-			//             '_blank',
-			//             `width=${width},height=${height},left=${window.screenLeft - clientX * -1 - width},top=${window.screenTop + clientY}`
-			//         );
-			//     }
-			// }
-
-			// dragState.next({
-			//     isDragging: false,
-			//     isDrop: true,
-			//     navigationTitle,
-			//     children: targetComponent,
-			//     x: clientX,
-			//     y: clientY,
-			//     containerName,
-			//     dropDocumentOutsideOption,
-			//     dropEndCallback,
-			//     screenKey,
-			//     customData,
-			// });
-			//if (dropEndCallback) dropEndCallback({ x: clientX, y: clientY });
+			dragEndCallback({
+				x: xy.clientX,
+				y: xy.clientY,
+			});
 		},
-		[isBlockingActiveInput],
+		[],
 	);
 
 	return {

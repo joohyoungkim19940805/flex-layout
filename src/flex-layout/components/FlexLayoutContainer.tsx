@@ -50,6 +50,7 @@ export default function FlexLayoutContainer({
 		//?
 		useSize(fitContent);
 	//: { ref: null, size: null };
+
 	// 콜백 ref에서 접근하기 위한 내부 ref 생성
 	const flexContainerNodeRef = useRef<HTMLDivElement | null>(null);
 
@@ -182,15 +183,20 @@ export default function FlexLayoutContainer({
 	// 스타일 변경 감지를 위한 MutationObserver
 	useEffect(() => {
 		if (!flexContainerNodeRef.current) return;
+
 		const targetNode = flexContainerNodeRef.current;
+
 		const parseOldGrowFromStyleAttr = (styleAttr: string | null) => {
 			if (!styleAttr) return undefined;
+
 			// style attribute string에서 "flex: X 1 0%" 형태를 찾아 X 파싱
 			const m = styleAttr.match(/flex\s*:\s*([^;]+)/);
 			if (!m) return undefined;
+
 			const n = parseFloat(m[1].trim().split(/\s+/)[0]);
 			return Number.isNaN(n) ? undefined : n;
 		};
+
 		const rememberCurrentLayoutGrowMap = () => {
 			if (!resizeMemory || !isUserResizingRef.current) return;
 
@@ -234,10 +240,12 @@ export default function FlexLayoutContainer({
 					// style.flex = "X 1 0%" 형태이므로 X를 파싱
 					const flexValue = targetNode.style.flex;
 					const parsedGrow = parseFloat(flexValue.split(" ")[0]);
+
 					if (!isNaN(parsedGrow)) {
 						const oldGrow = parseOldGrowFromStyleAttr(
 							mutation.oldValue,
 						);
+
 						// state 업데이트
 						setGrowState(parsedGrow, oldGrow);
 						rememberCurrentLayoutGrowMap();
@@ -262,28 +270,12 @@ export default function FlexLayoutContainer({
 		// fit-content 자동 보정이 먼저 실행되어 복원값을 덮어쓰지 않게 한다.
 		if (resizeMemory && !isResizeMemoryReady) return;
 
-		if (resizeMemory && !isFirstLoadRef.current) {
-			const rememberedGrow = resizeMemory.getGrowMap()[containerName];
-
-			if (
-				typeof rememberedGrow === "number" &&
-				Number.isFinite(rememberedGrow)
-			) {
-				if (typeof size === "number") {
-					lastSize.current = size;
-				}
-
-				isFirstLoadRef.current = true;
-				return;
-			}
-		}
-
 		// 컴포넌트 크기 및 설정값에 따른 사이즈 재조정
 		if (
 			!flexContainerNodeRef.current ||
 			!ref ||
 			!ref.current ||
-			!size ||
+			typeof size !== "number" ||
 			lastSize.current == size ||
 			Math.abs((lastSize.current ?? 0) - size) <= 5 ||
 			isUserResizingRef.current // 사용자가 직접 사이즈 조정 중일 때는 자동 조정 방지
@@ -297,15 +289,25 @@ export default function FlexLayoutContainer({
 
 			const sizeName = `${fitContent.charAt(0).toUpperCase() + fitContent.substring(1)}`;
 			const _lastMaxSize = lastMaxSize.current;
-			// const _lastContainerSize =
-			// 	flexContainerNodeRef.current.getBoundingClientRect()[
-			// 		fitContent
-			// 	];
+
 			if (isFitContent) {
 				flexContainerNodeRef.current.style[
 					("max" + sizeName) as "maxWidth" | "maxHeight"
 				] = size + "px";
 				lastMaxSize.current = size;
+			}
+
+			const rememberedGrow =
+				resizeMemory && !isFirstLoadRef.current
+					? resizeMemory.getGrowMap()[containerName]
+					: undefined;
+
+			if (
+				typeof rememberedGrow === "number" &&
+				Number.isFinite(rememberedGrow)
+			) {
+				isFirstLoadRef.current = true;
+				return;
 			}
 
 			if (!isFitResize && isFirstLoadRef.current) {
@@ -321,19 +323,6 @@ export default function FlexLayoutContainer({
 								| "clientHeight"
 						]) ||
 					0;
-
-				//
-				// const lastMaxSizeGrow = mathGrow(
-				// 	_lastMaxSize || 0,
-				// 	parentSize,
-				// 	containerCount,
-				// );
-
-				// const currentSizeGrow = mathGrow(
-				// 	_lastContainerSize,
-				// 	parentSize,
-				// 	containerCount,
-				// );
 
 				const newGrow = mathGrow(
 					size,
@@ -398,7 +387,8 @@ export default function FlexLayoutContainer({
 		let containerList = [
 			...(flexContainerNodeRef.current.parentElement?.children || []),
 		].filter((e) => e.hasAttribute("data-container_name"));
-		let remainingGrow = containerList.reduce((t, e, i) => {
+
+		let remainingGrow = containerList.reduce((t, e) => {
 			let item = e as HTMLElement;
 
 			if (item.classList.contains(styles["flex-resize-panel"])) return t;
@@ -424,13 +414,16 @@ export default function FlexLayoutContainer({
 				notGrowList.push(item);
 				return t;
 			}
+
 			let grow = parseFloat(item.dataset.grow || "");
 			item.style.flex = `${grow} 1 0%`;
 			t -= grow;
 			return t;
 		}, containerList.length);
+
 		if (notGrowList.length != 0) {
 			let resizeWeight = mathWeight(notGrowList.length, remainingGrow);
+
 			notGrowList.forEach((e) => {
 				e.dataset.grow = resizeWeight.toString();
 				e.style.flex = `${resizeWeight} 1 0%`;
