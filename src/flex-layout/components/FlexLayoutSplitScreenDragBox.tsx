@@ -351,8 +351,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			clonedNodeRef.current?.isConnected &&
 			(event.type === "touchcancel" ||
 				event.type === "pointercancel" ||
-				event.type === "blur" ||
-				event.type === "contextmenu")
+				event.type === "blur")
 		) {
 			if (event.cancelable) event.preventDefault();
 			event.stopPropagation();
@@ -479,7 +478,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			"pointerup", // 범용 포인터 이벤트
 			"pointercancel",
 			"blur", // 윈도우 포커스 아웃 (Alt+Tab 등)
-			"contextmenu",
 		];
 
 		moveEvents.forEach((eventName) => {
@@ -521,12 +519,9 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			if (e.cancelable) e.preventDefault();
 			e.stopPropagation();
 
-			handleEnd({
-				event: new Event("pointercancel"),
-				dragEndCallback: () => {},
-			});
-
-			cancelDragVisualState();
+			// 중요:
+			// contextmenu는 브라우저 기본 메뉴만 막고,
+			// 드래그 상태/clone은 유지한다.
 		};
 
 		document.addEventListener("contextmenu", onCtx, {
@@ -539,14 +534,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 				capture: true,
 			});
 		};
-	}, [
-		handleEnd,
-		containerName,
-		navigationTitle,
-		dropDocumentOutsideOption,
-		targetComponent,
-		customData,
-	]);
+	}, []);
 
 	useEffect(() => {
 		return () => {
@@ -726,7 +714,12 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 						},
 					});
 				}}
-				style={{ ...style }}
+				style={{
+					userSelect: "none",
+					WebkitUserSelect: "none",
+					WebkitTouchCallout: "none",
+					...style,
+				}}
 				{...props}
 			>
 				{children}
