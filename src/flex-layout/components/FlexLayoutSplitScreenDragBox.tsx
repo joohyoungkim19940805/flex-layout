@@ -311,6 +311,35 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			},
 		});
 	};
+	const cancelDragVisualState = (
+		x = lastPointRef.current.x,
+		y = lastPointRef.current.y,
+	) => {
+		if (scrollRAF.current !== null) {
+			cancelAnimationFrame(scrollRAF.current);
+			scrollRAF.current = null;
+		}
+		velocity.current = { vx: 0, vy: 0 };
+
+		clonedNodeRef.current?.remove();
+
+		emitDragState({
+			isDragging: false,
+			isDrop: false,
+			navigationTitle:
+				navigationTitle ??
+				titleFromUrl(dropDocumentOutsideOption?.openUrl),
+			children: getFallbackElement(
+				targetComponent,
+				dropDocumentOutsideOption?.openUrl,
+			),
+			x,
+			y,
+			containerName,
+			dropDocumentOutsideOption,
+			customData,
+		});
+	};
 	const handleEndWrapper = (event: Event) => {
 		if (scrollRAF.current !== null) {
 			cancelAnimationFrame(scrollRAF.current);
@@ -322,8 +351,18 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			clonedNodeRef.current?.isConnected &&
 			(event.type === "touchcancel" ||
 				event.type === "pointercancel" ||
-				event.type === "blur")
+				event.type === "blur" ||
+				event.type === "contextmenu")
 		) {
+			if (event.cancelable) event.preventDefault();
+			event.stopPropagation();
+
+			handleEnd({
+				event: new Event("pointercancel"),
+				dragEndCallback: () => {},
+			});
+
+			cancelDragVisualState();
 			return;
 		}
 
@@ -332,24 +371,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			dragEndCallback: ({ x, y }) => {
 				if (escCanceledRef.current) {
 					escCanceledRef.current = false;
-					if (clonedNodeRef.current) clonedNodeRef.current.remove();
-
-					emitDragState({
-						isDragging: false,
-						isDrop: false,
-						navigationTitle:
-							navigationTitle ??
-							titleFromUrl(dropDocumentOutsideOption?.openUrl),
-						children: getFallbackElement(
-							targetComponent,
-							dropDocumentOutsideOption?.openUrl,
-						),
-						x,
-						y,
-						containerName,
-						dropDocumentOutsideOption,
-						customData,
-					});
+					cancelDragVisualState(x, y);
 					return;
 				}
 
@@ -431,7 +453,10 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			clone.style.margin = "0px";
 			clone.style.willChange = "transform";
 			clone.style.transform = "translate3d(-9999px, -9999px, 0)";
-			clone.style.pointerEvents = "none";
+			clone.style.userSelect = "none";
+			clone.style.webkitUserSelect = "none";
+			clone.style.touchAction = "none";
+			clone.style.setProperty("-webkit-touch-callout", "none");
 
 			clonedNodeRef.current = clone;
 			clonedNodeRef.current.classList.add(
@@ -454,6 +479,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			"pointerup", // 범용 포인터 이벤트
 			"pointercancel",
 			"blur", // 윈도우 포커스 아웃 (Alt+Tab 등)
+			"contextmenu",
 		];
 
 		moveEvents.forEach((eventName) => {
@@ -462,14 +488,19 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			});
 		});
 		endEvents.forEach((eventName) => {
-			window.addEventListener(eventName, handleEndWrapper);
+			window.addEventListener(eventName, handleEndWrapper, {
+				capture: true,
+				passive: false,
+			});
 		});
 		return () => {
 			moveEvents.forEach((eventName) => {
 				window.removeEventListener(eventName, handleMoveWrapper);
 			});
 			endEvents.forEach((eventName) => {
-				window.removeEventListener(eventName, handleEndWrapper);
+				window.removeEventListener(eventName, handleEndWrapper, {
+					capture: true,
+				});
 			});
 		};
 	}, [
@@ -484,17 +515,38 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	]);
 
 	useEffect(() => {
-		const el = ref.current;
-		if (!el) return;
+		const onCtx = (e: Event) => {
+			if (!clonedNodeRef.current?.isConnected) return;
 
-		const onCtx = (e: Event) => e.preventDefault();
+			if (e.cancelable) e.preventDefault();
+			e.stopPropagation();
 
-		el.addEventListener("contextmenu", onCtx);
+			handleEnd({
+				event: new Event("pointercancel"),
+				dragEndCallback: () => {},
+			});
+
+			cancelDragVisualState();
+		};
+
+		document.addEventListener("contextmenu", onCtx, {
+			capture: true,
+			passive: false,
+		});
 
 		return () => {
-			el.removeEventListener("contextmenu", onCtx);
+			document.removeEventListener("contextmenu", onCtx, {
+				capture: true,
+			});
 		};
-	}, []);
+	}, [
+		handleEnd,
+		containerName,
+		navigationTitle,
+		dropDocumentOutsideOption,
+		targetComponent,
+		customData,
+	]);
 
 	useEffect(() => {
 		return () => {
