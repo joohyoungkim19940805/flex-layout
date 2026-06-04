@@ -39,6 +39,7 @@ export default function FlexLayoutContainer({
 		direction,
 		panelMovementMode,
 		panelClassName,
+		panelHoverClassName,
 		layoutName,
 		fitContent,
 		containerCount,
@@ -578,6 +579,7 @@ export default function FlexLayoutContainer({
 					containerCount={containerCount}
 					panelMode={panelMode}
 					panelClassName={panelClassName}
+					panelHoverClassName={panelHoverClassName}
 					panelMovementMode={panelMovementMode}
 					onResizingChange={handleResizingChange}
 				/>

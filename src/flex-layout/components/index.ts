@@ -8,3 +8,6 @@ export { default as FlexLayoutSplitScreen } from "./FlexLayoutSplitScreen";
 export { default as FlexLayoutSplitScreenDragBox } from "./FlexLayoutSplitScreenDragBox";
 export { default as FlexLayoutSplitScreenScrollBox } from "./FlexLayoutSplitScreenScrollBox";
 export { default as FlexLayoutStickyBox } from "./FlexLayoutStickyBox";
+
+export { default as FlexLayoutTable } from "./FlexLayoutTable";
+export type { FlexLayoutTableProps, FlexLayoutTableHeader, FlexLayoutTableBodyCell, FlexLayoutTableBodyItem } from "./FlexLayoutTable";

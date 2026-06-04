@@ -17,6 +17,9 @@ import {
 	isOverMove,
 } from "../utils/FlexLayoutUtils";
 
+const cx = (...classNames: Array<string | false | null | undefined>) =>
+	classNames.filter(Boolean).join(" ");
+
 const flexDirectionModel = {
 	row: {
 		xy: "x",
@@ -266,6 +269,7 @@ export default function FlexLayoutResizePanel({
 	containerName,
 	layoutName,
 	panelClassName,
+	panelHoverClassName,
 	panelMovementMode,
 	onResizingChange,
 }: FlexLayoutResizePanelProps) {
@@ -532,7 +536,16 @@ export default function FlexLayoutResizePanel({
 			: [{ el: panelRef.current, key: panelKey, dir: myDir }];
 
 		const targetsSet = new Set<string>([panelKey]);
-		nearPanels.forEach((p) => targetsSet.add(p.key));
+
+		// Cross-mode에서는 시작 패널과 교차축(perpendicular) 패널만 같이 움직인다.
+		// 기존 로직은 가상 영역 스윕 과정에서 같은 방향의 다른 row/column 패널까지
+		// targets에 섞여 들어가, 예를 들어 닫힌 row 1을 리사이징할 때 row 2/3도
+		// 같이 따라 움직이는 문제가 있었다.
+		nearPanels.forEach((p) => {
+			if (!p.dir || p.dir === myDir) return;
+			targetsSet.add(p.key);
+		});
+
 		const targets = [...targetsSet];
 
 		// 교차면 + 커서
@@ -703,7 +716,7 @@ export default function FlexLayoutResizePanel({
 			onMouseEnter={updateHoverCursor}
 			onMouseLeave={resetHoverCursor}
 		>
-			<div className={styles.hover} aria-hidden></div>
+			<div className={cx(styles.hover, panelHoverClassName)} aria-hidden></div>
 		</div>
 	);
 }
