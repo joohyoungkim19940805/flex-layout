@@ -435,6 +435,21 @@ export default function FlexLayoutTable({
 		[scheduleUpdateRowBoundaryTops],
 	);
 
+	const handleFirstColumnCellRef = useCallback(
+		(rowIndex: number) => (node: HTMLDivElement | null) => {
+			handleRowBoundarySourceRef(rowIndex)(node);
+
+			if (rowIndex === 0) {
+				firstChildRef(node);
+			}
+
+			if (rowIndex === body.length - 1) {
+				lastChildRef(node);
+			}
+		},
+		[body.length, firstChildRef, handleRowBoundarySourceRef, lastChildRef],
+	);
+
 	const applyRowHeightToDom = useCallback(
 		(rowIndex: number, height: number) => {
 			const tableEl = tableRef.current;
@@ -652,11 +667,6 @@ export default function FlexLayoutTable({
 				style={tableStyle}
 			>
 				<div
-					className={styles["flex-layout-table-sentinel"]}
-					ref={firstChildRef as (node: HTMLDivElement | null) => void}
-				/>
-
-				<div
 					ref={tableAreaRef}
 					className={cx(
 						styles["flex-layout-table-area"],
@@ -720,7 +730,7 @@ export default function FlexLayoutTable({
 											}
 											rowBoundarySourceRef={
 												headerIndex === 0
-													? handleRowBoundarySourceRef(
+													? handleFirstColumnCellRef(
 															rowIndex,
 														)
 													: undefined
@@ -827,11 +837,6 @@ export default function FlexLayoutTable({
 							);
 						})}
 				</div>
-
-				<div
-					className={styles["flex-layout-table-sentinel"]}
-					ref={lastChildRef as (node: HTMLDivElement | null) => void}
-				/>
 			</div>
 
 			{children}
