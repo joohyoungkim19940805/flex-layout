@@ -23,6 +23,7 @@ import {
 	Subject,
 	switchMap,
 } from "rxjs";
+import { useFlexLayoutContext } from "./FlexLayoutContext";
 const g = globalThis as any;
 g.__FLEX_SUBJECTS__ ??= { openClose: {}, spread: {} };
 
@@ -65,7 +66,6 @@ export const containerSpreadSubjectMap: SubjectMap<ContainerState> =
 //     total[key] = new Subject<ContainerState>();
 //     return total;
 // }, {} as SubjectMap<ContainerState>);
-
 export const ContainerOpenCloseProvider = ({
 	layoutName,
 	containerName,
@@ -75,6 +75,8 @@ export const ContainerOpenCloseProvider = ({
 	containerName: string;
 	sizeName: "width" | "height";
 }) => {
+	const { resizeMemory } = useFlexLayoutContext();
+
 	// SubjectMap에 중복 체크 후 Subject 추가
 	if (!containerOpenCloseSubjectMap[containerName]) {
 		containerOpenCloseSubjectMap[containerName] =
@@ -113,6 +115,7 @@ export const ContainerOpenCloseProvider = ({
 		// 구독 해제
 		return () => subscription.unsubscribe();
 	}, [containerName, layoutName]);
+
 	useEffect(() => {
 		const styleName = `${sizeName.charAt(0).toUpperCase() + sizeName.substring(1)}`;
 		const clientSize = ("client" + styleName) as
@@ -120,6 +123,36 @@ export const ContainerOpenCloseProvider = ({
 			| "clientHeight";
 		const outerSize = ("outer" + styleName) as "outerWidth" | "outerHeight";
 		const maxSize = ("max" + styleName) as "maxWidth" | "maxHeight";
+
+		const rememberCurrentLayoutGrowMap = () => {
+			if (!resizeMemory) return;
+
+			const growMap = containers.reduce<Record<string, number>>(
+				(map, item) => {
+					const name = item.dataset.container_name;
+
+					if (!name) {
+						return map;
+					}
+
+					const grow = getGrow(item);
+
+					if (Number.isFinite(grow)) {
+						map[name] = grow;
+					}
+
+					return map;
+				},
+				{},
+			);
+
+			if (Object.keys(growMap).length === 0) return;
+
+			void resizeMemory.ready.then(() => {
+				resizeMemory.setGrowMap(growMap);
+			});
+		};
+
 		const subscribe = containerOpenCloseSubjectMap[containerName].subscribe(
 			({
 				mode,
@@ -130,6 +163,7 @@ export const ContainerOpenCloseProvider = ({
 				closeOption = {},
 			}) => {
 				if (!container || containers.length === 0) return;
+
 				const currentGrow = getGrow(container);
 				const styleMap = window.getComputedStyle(container);
 				const maxSizeGrow = mathGrow(
@@ -139,6 +173,7 @@ export const ContainerOpenCloseProvider = ({
 						window[outerSize],
 					containers.length,
 				);
+
 				const open = () =>
 					openFlex(container, containers, {
 						sizeName,
@@ -149,25 +184,33 @@ export const ContainerOpenCloseProvider = ({
 								}),
 						...openOption,
 					}).then((openTargetGrow) => {
+						rememberCurrentLayoutGrowMap();
+
 						if (onOpen) onOpen();
+
 						containerSpreadSubjectMap[containerName].next({
 							isOpen: true,
 							grow: openTargetGrow as any,
 							targetContainer: container,
 						});
 					});
+
 				const close = () =>
 					closeFlex(container, containers, {
 						sizeName,
 						...closeOption,
 					}).then(() => {
+						rememberCurrentLayoutGrowMap();
+
 						if (onClose) onClose();
+
 						containerSpreadSubjectMap[containerName].next({
 							isOpen: false,
 							grow: 0,
 							targetContainer: container,
 						});
 					});
+
 				if (mode === "toggle") {
 					if (currentGrow === 0) {
 						open();
@@ -189,7 +232,7 @@ export const ContainerOpenCloseProvider = ({
 		return () => {
 			subscribe.unsubscribe();
 		};
-	}, [containerName, container, containers, sizeName]);
+	}, [containerName, container, containers, sizeName, resizeMemory]);
 
 	return null;
 };

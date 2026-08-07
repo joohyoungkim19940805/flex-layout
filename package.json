@@ -1,6 +1,10 @@
 {
 	"name": "@byeolnaerim/flex-layout",
+<<<<<<< HEAD
 	"version": "0.0.12",
+=======
+	"version": "0.0.14",
+>>>>>>> b35c03231aedaefb81406931aae6cc46e17ff0fe
 	"type": "module",
 	"license": "Apache-2.0",
 	"author": "Joohyoung Kim (@oozu1994)",
@@ -35,10 +39,11 @@
 		"url": "https://github.com/joohyoungkim19940805/flex-layout/issues"
 	},
 	"files": [
-		"dist/**/*.js",
-		"dist/**/*.cjs",
-		"dist/**/*.d.ts",
-		"dist/**/*.css"
+		"dist",
+		"LICENSE",
+		"README.md",
+		"README.en.md",
+		"README.ko.md"
 	],
 	"sideEffects": [
 		"**/*.css"
@@ -54,34 +59,34 @@
 			"default": "./dist/index.js"
 		},
 		"./components": {
-			"types": "./dist/components.d.ts",
-			"import": "./dist/components.js",
-			"require": "./dist/components.cjs",
-			"default": "./dist/components.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./hooks": {
-			"types": "./dist/hooks.d.ts",
-			"import": "./dist/hooks.js",
-			"require": "./dist/hooks.cjs",
-			"default": "./dist/hooks.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./providers": {
-			"types": "./dist/providers.d.ts",
-			"import": "./dist/providers.js",
-			"require": "./dist/providers.cjs",
-			"default": "./dist/providers.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./utils": {
-			"types": "./dist/utils.d.ts",
-			"import": "./dist/utils.js",
-			"require": "./dist/utils.cjs",
-			"default": "./dist/utils.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		},
 		"./store": {
-			"types": "./dist/store.d.ts",
-			"import": "./dist/store.js",
-			"require": "./dist/store.cjs",
-			"default": "./dist/store.js"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs",
+			"default": "./dist/index.js"
 		}
 	},
 	"scripts": {
@@ -91,26 +96,28 @@
 		"prepack": "npm run build",
 		"prepare": "npm run build"
 	},
-	"devDependencies": {
-		"@types/react": "^18",
-		"@types/react-dom": "^18",
-		"cpy-cli": "^5",
-		"esbuild-plugin-preserve-directives": "^0.0.11",
-		"react": "^19.2.4",
-		"react-dom": "^19.2.4",
-		"rxjs": "^7.8.2",
-		"tsup": "^8.5.1",
-		"typescript": "5.9.3"
-	},
 	"peerDependencies": {
-		"react": ">=18",
-		"react-dom": ">=18"
+		"react": ">=18 <20",
+		"react-dom": ">=18 <20"
 	},
 	"dependencies": {
+		"@byeolnaerim/global-rx-state": ">=0.0.1 <0.1.0",
 		"fast-deep-equal": "^3.1.3",
 		"rxjs": ">=7"
 	},
+	"devDependencies": {
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"@byeolnaerim/global-rx-state": "0.0.3",
+		"esbuild-plugin-preserve-directives": "^0.0.11",
+		"cpy-cli": "^5",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
+		"rxjs": "^7.8.2",
+		"tsup": "^8.5.1",
+		"typescript": "6.0.3"
+	},
 	"overrides": {
-		"esbuild": "0.27.3"
+		"esbuild": "0.28.0"
 	}
 }

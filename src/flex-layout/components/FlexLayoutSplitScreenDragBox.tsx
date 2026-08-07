@@ -311,22 +311,20 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			},
 		});
 	};
-
 	const handleEndWrapper = (event: Event) => {
-		//  안전장치로 RAF 취소
 		if (scrollRAF.current !== null) {
 			cancelAnimationFrame(scrollRAF.current);
 			scrollRAF.current = null;
 		}
 		velocity.current = { vx: 0, vy: 0 };
 
-		// 추가 안전장치 blur나 cancel 이벤트 발생 시 Clone 노드를 강제 정리
 		if (
-			event.type === "blur" ||
-			event.type === "touchcancel" ||
-			event.type === "pointercancel"
+			clonedNodeRef.current?.isConnected &&
+			(event.type === "touchcancel" ||
+				event.type === "pointercancel" ||
+				event.type === "blur")
 		) {
-			if (clonedNodeRef.current) clonedNodeRef.current.remove();
+			return;
 		}
 
 		handleEnd({
@@ -357,6 +355,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 
 				const href = hrefUrlRef.current;
 				if (clonedNodeRef.current) clonedNodeRef.current.remove();
+
 				if (dropDocumentOutsideOption && isDocumentOut({ x, y })) {
 					if (
 						dropDocumentOutsideOption.isNewTap ||
@@ -371,6 +370,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 						const height =
 							window.innerHeight *
 							(dropDocumentOutsideOption.heightRatio || 1);
+
 						window.open(
 							href,
 							"_blank",
@@ -378,6 +378,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 						);
 					}
 				}
+
 				emitDragState({
 					isDragging: false,
 					isDrop: true,

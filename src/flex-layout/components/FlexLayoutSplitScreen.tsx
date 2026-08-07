@@ -80,7 +80,7 @@ function isInnerDrop({
 // SSR 환경과 브라우저 환경 모두에서 안전하게 키를 생성하는 헬퍼 함수
 const generateScreenKey = () => {
 	// 브라우저 환경일 때 (window 객체가 존재할 때)
-	if (typeof window !== "undefined" && window.crypto) {
+	if (typeof window != "undefined" && window.crypto) {
 		return Array.from(
 			window.crypto.getRandomValues(new Uint32Array(16)),
 			(e) => e.toString(32).padStart(2, "0"),

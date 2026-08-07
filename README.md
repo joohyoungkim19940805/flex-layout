@@ -5,10 +5,13 @@
 A set of components to quickly build **flex-based resizable panels + split screen + Drag & Drop** UI in React (Next.js).
 
 The core of this library is **`<FlexLayout />`**.  
-With `FlexLayout` + `FlexLayoutContainer`, you can build layouts where panels are split (row/column), resized by dragging, and optionally opened/closed.  
+With `FlexLayout` + `FlexLayoutContainer`, you can build layouts where panels are split in one direction (`row` / `column`), resized by dragging, and optionally opened/closed.  
 On top of that, it provides **Split Screen** (dynamic multi-pane views) and Drag & Drop based on **`FlexLayoutSplitScreenDragBox`** / **`useDragCapture`**.
 
-> ⚠️ Many components rely on `window`, `ResizeObserver`, etc. For Next.js (App Router), using them as **Client Components** is recommended. (`"use client"`)
+> ℹ️ **Next.js App Router note**  
+> The main components of `@byeolnaerim/flex-layout` include `"use client"` internally, so they can usually be imported and rendered from Server Components such as `app/layout.tsx`.
+>
+> If your environment or build setup still pulls the package into a server-side scope and causes an error, create a small client wrapper or use `dynamic(..., { ssr: false })`.
 
 ---
 
@@ -25,46 +28,275 @@ yarn add @byeolnaerim/flex-layout
 pnpm add @byeolnaerim/flex-layout
 ```
 
+### Requirements
+
+- React >= 18
+- React DOM >= 18
+
+`rxjs (>= 7)` and `fast-deep-equal (3.1.3)` are included as runtime dependencies, so you normally do not need to install them separately.
+
+Type definitions (`.d.ts`) are included in the package and can be used directly from TypeScript.
+
+Styles are imported by the components through CSS Modules, so no separate global CSS import is required.
+
+### Next.js fallback patterns
+
+Most Next.js App Router projects can import the main components directly.
+
+If your build/runtime environment still reports a server-side import issue, use one of the following patterns.
+
+#### Option 1. Client wrapper
+
+```tsx
+// FlexLayoutClient.tsx
+"use client";
+
+export {
+	FlexLayout,
+	FlexLayoutContainer,
+	FlexLayoutSplitScreen,
+} from "@byeolnaerim/flex-layout";
+```
+
+Then import from that wrapper in a Server Component:
+
+```tsx
+import {
+	FlexLayout,
+	FlexLayoutContainer,
+	FlexLayoutSplitScreen,
+} from "@/components/FlexLayoutClient";
+```
+
+#### Option 2. Dynamic import
+
+```tsx
+import dynamic from "next/dynamic";
+
+const FlexLayout = dynamic(
+	() => import("@byeolnaerim/flex-layout").then((m) => m.FlexLayout),
+	{ ssr: false },
+);
+```
+
 ---
 
 ## Quick Start
 
-### 1) FlexLayout + FlexLayoutContainer (basic resizable layout)
+`FlexLayout` basically manages a split layout in a single direction.
+
+### 1) Basic row split
 
 ```tsx
-"use client";
-
 import { FlexLayout, FlexLayoutContainer } from "@byeolnaerim/flex-layout";
 
-export default function Basic() {
+export default function BasicRow() {
 	return (
-		<div style={{ height: 500 }}>
-			<FlexLayout layoutName="basic" direction="row">
-				<>
-					<FlexLayoutContainer
-						containerName="left"
-						grow={1}
-						isResizePanel
-					>
-						<div>Left</div>
-					</FlexLayoutContainer>
+		<FlexLayout layoutName="basic-row_1" direction="row">
+			<FlexLayoutContainer containerName="basic-row_1-left" isResizePanel>
+				<div>Left</div>
+			</FlexLayoutContainer>
 
-					<FlexLayoutContainer containerName="right" grow={1}>
-						<div>Right</div>
-					</FlexLayoutContainer>
-				</>
-			</FlexLayout>
-		</div>
+			<FlexLayoutContainer containerName="basic-row_1-mid" isResizePanel>
+				<div>Mid</div>
+			</FlexLayoutContainer>
+
+			<FlexLayoutContainer containerName="basic-row_1-right">
+				<div>Right</div>
+			</FlexLayoutContainer>
+		</FlexLayout>
 	);
 }
 ```
 
 - `direction="row"`: left/right split
 - `direction="column"`: top/bottom split
-- A container with `isResizePanel={true}` will render a **resize panel** after it.
+- When `isResizePanel` is `true`, a resize panel is rendered as a sibling of that container.
+- In most cases, you do not need to add `isResizePanel` to the last container. Doing so can conflict with the browser's own resize behavior and degrade the user experience.
+- When containers are rendered dynamically, prefer controlling `isResizePanel` with state instead of always rendering it as `true`.
 
-> **Important:** `layoutName` and `containerName` are used as keys in internal Store/Subjects.  
-> If multiple instances of the same layout can appear on the screen, use a stable unique value (e.g. `useId()`) to avoid collisions.
+> **Important:** `layoutName` and `containerName` are used as DOM `id` values and as keys for internal Store/Subject-based APIs such as `getLayoutInfos` and `useDecompositionLayout`.
+>
+> They should be unique and stable within the page. Avoid whitespace or unusual special characters; prefer letters, numbers, `-`, and `_`.
+
+### 2) Column split + grow
+
+```tsx
+import { FlexLayout, FlexLayoutContainer } from "@byeolnaerim/flex-layout";
+
+export default function BasicColumn() {
+	return (
+		<FlexLayout layoutName="basic-column_3" direction="column">
+			<FlexLayoutContainer
+				containerName="basic-column_3-top"
+				isResizePanel
+				grow={0.45}
+			>
+				<div>Top</div>
+			</FlexLayoutContainer>
+
+			<FlexLayoutContainer
+				containerName="basic-column_3-mid"
+				isResizePanel
+			>
+				<div>Mid</div>
+			</FlexLayoutContainer>
+
+			<FlexLayoutContainer containerName="basic-column_3-bottom">
+				<div>Bottom</div>
+			</FlexLayoutContainer>
+		</FlexLayout>
+	);
+}
+```
+
+If `grow` is not specified, containers without an explicit value receive an equal share of the remaining grow value after explicitly assigned grow values are excluded.
+
+As a rule of thumb, avoid assigning a `grow` value greater than the number of containers.
+
+### 3) Nested split layout
+
+`FlexLayout` manages one direction at a time. If you need both horizontal and vertical splits, nest another `FlexLayout` inside a `FlexLayoutContainer`.
+
+```tsx
+import { FlexLayout, FlexLayoutContainer } from "@byeolnaerim/flex-layout";
+
+export default function NestedSplit() {
+	return (
+		<FlexLayout layoutName="nested-root" direction="row">
+			<FlexLayoutContainer containerName="nested-left" isResizePanel>
+				<FlexLayout layoutName="nested-left-column" direction="column">
+					<FlexLayoutContainer
+						containerName="nested-left-top"
+						isResizePanel
+					>
+						<div>Left Top</div>
+					</FlexLayoutContainer>
+					<FlexLayoutContainer containerName="nested-left-bottom">
+						<div>Left Bottom</div>
+					</FlexLayoutContainer>
+				</FlexLayout>
+			</FlexLayoutContainer>
+
+			<FlexLayoutContainer containerName="nested-right">
+				<div>Right</div>
+			</FlexLayoutContainer>
+		</FlexLayout>
+	);
+}
+```
+
+Because `FlexLayout` is based on CSS flex, a `column` layout needs a parent height that can actually be calculated. If the parent height is `auto` or there is no resizable free space, resizing may not work as expected.
+
+### 4) min/max + isFitContent
+
+You can constrain the resize range by applying CSS min/max size to a container.
+
+```ts
+import { getLayoutInfos } from "@byeolnaerim/flex-layout/providers";
+
+const [handleSizeTarget, setHandleSizeTarget] = useState<HTMLElement | null>(
+	null,
+);
+
+useEffect(() => {
+	const layoutSubscribe = getLayoutInfos("basic-row_7").subscribe(
+		(layout) => {
+			const leftContainer =
+				layout.container?.["basic-row_7-left"]?.current;
+			if (leftContainer) {
+				setHandleSizeTarget(leftContainer);
+			}
+		},
+	);
+
+	return () => {
+		layoutSubscribe.unsubscribe();
+	};
+}, []);
+
+useEffect(() => {
+	if (!handleSizeTarget) return;
+	handleSizeTarget.style.minWidth = "25px";
+	handleSizeTarget.style.maxWidth = "180px";
+}, [handleSizeTarget]);
+```
+
+Or use `useDecompositionLayout`.
+
+```ts
+import { useDecompositionLayout } from "@byeolnaerim/flex-layout/providers";
+
+const {
+	layout: containers,
+	container,
+	resizePanel,
+} = useDecompositionLayout({
+	layoutName: "basic-row_7",
+	containerName: "basic-row_7-left",
+});
+
+useEffect(() => {
+	if (!container) return;
+	container.style.minWidth = "25px";
+	container.style.maxWidth = "180px";
+}, [container]);
+```
+
+Use `isFitContent` when you want a container's internal content size to act as its maximum size.
+
+```tsx
+<FlexLayout layoutName="basic-row_7" direction="row">
+	<FlexLayoutContainer containerName="basic-row_7-left" isResizePanel>
+		<div>Left</div>
+	</FlexLayoutContainer>
+
+	<FlexLayoutContainer containerName="basic-row_7-mid" isResizePanel>
+		<div>Mid</div>
+	</FlexLayoutContainer>
+
+	<FlexLayoutContainer containerName="basic-row_7-right" isFitContent>
+		<div style={{ whiteSpace: "nowrap", paddingRight: "1rem" }}>
+			I'm Using Fit Content
+		</div>
+	</FlexLayoutContainer>
+</FlexLayout>
+```
+
+Do not apply max-size constraints such as `isFitContent` to every container unless that is intentional. At least one container should usually remain without a max-size constraint so the layout has room to resize.
+
+### 5) Panel movement mode
+
+`panelMovementMode` controls how adjacent panels interact while resizing. The default is `"divorce"`.
+
+```tsx
+const [mode, setMode] = useState<"bulldozer" | "divorce" | "stalker">(
+	"bulldozer",
+);
+
+<FlexLayout
+	layoutName={`panel-movement-demo-${mode}`}
+	direction="column"
+	panelMovementMode={mode}
+>
+	<FlexLayoutContainer containerName="panel-top" isResizePanel>
+		<div>Top</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="panel-mid1" isResizePanel>
+		<div>Mid 1</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="panel-mid2" isResizePanel>
+		<div>Mid 2</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="panel-bottom">
+		<div>Bottom</div>
+	</FlexLayoutContainer>
+</FlexLayout>;
+```
+
+- `"bulldozer"`: pushes adjacent panels but does not stick them together.
+- `"divorce"`: pushes adjacent panels and sticks them together, but separates them again when the resize returns to the starting point. This is the default mode.
+- `"stalker"`: keeps adjacent panels fully attached, but separates them again when the edge is reached.
 
 ---
 
@@ -79,15 +311,34 @@ import { FlexLayout } from "@byeolnaerim/flex-layout";
 ### Props
 
 - `layoutName: string`  
-  A key to identify the layout instance.
+  A key to identify the layout instance. It is also used as a DOM `id` and as a key for internal Store/Subject APIs.
 - `direction: "row" | "column"`  
-  Flex direction (horizontal/vertical split).
+  Flex direction. `"row"` creates a horizontal split and `"column"` creates a vertical split.
 - `children: ReactNode`
 - `className?: string`
 - `panelClassName?: string`  
   Class name for customizing the resize panel style.
-- `panelMovementMode?: "default" | "bulldozer"`  
-  How adjacent panels are pushed during resizing.
+- `panelMovementMode?: "bulldozer" | "divorce" | "stalker"`  
+  Controls how adjacent panels interact while resizing. The default is `"divorce"`.
+- `rememberResize?: { storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"; keyName?: string; name?: string; storeName?: string; keyPrefix?: string }`  
+  Persists the latest resize `grow` map for all containers in this layout. Resize memory is configured on `FlexLayout`, not on each `FlexLayoutContainer`, because each grow value is part of the same distributed layout. When omitted, resize memory is disabled and no in-memory store is created.
+
+```tsx
+<FlexLayout
+	layoutName="basic-row_1"
+	direction="row"
+	rememberResize={{ storage: "sessionstorage" }}
+>
+	<FlexLayoutContainer containerName="left" isResizePanel>
+		<div>Left</div>
+	</FlexLayoutContainer>
+	<FlexLayoutContainer containerName="right">
+		<div>Right</div>
+	</FlexLayoutContainer>
+</FlexLayout>
+```
+
+By default, the persistence key is `__flexLayoutResizeGrow:${layoutName}`. Use `keyName` when multiple layouts need to share or separate a custom persisted resize state.
 
 ---
 
@@ -102,18 +353,18 @@ import { FlexLayoutContainer } from "@byeolnaerim/flex-layout";
 ### Props
 
 - `containerName: string` _(required)_  
-  Panel/container key.
+  Panel/container key. It is also used as a DOM `id` and as a key for internal Store/Subject APIs.
 - `children: ReactNode`
 - `grow?: number`  
-  Flex-grow ratio (e.g. left 2, right 1).
+  Defines the initial ratio for a specific container. Containers without an explicit `grow` value receive an equal share of the remaining grow value after explicitly assigned grow values are excluded. Prefer not to assign a `grow` value greater than the number of containers.
 - `className?: string`
 - `style?: React.CSSProperties`
 - `isResizePanel?: boolean`  
-  Whether to place a resize panel after this container.
+  Renders a resize panel as a sibling of this container. The resize panel belongs to the container that declares `isResizePanel`, but it controls the sibling panels on both sides. In most cases, avoid adding it to the last container.
 - `panelMode?: "default" | "left-cylinder" | "right-cylinder" | "top-cylinder" | "bottom-cylinder"`  
-  Controls the **visual orientation/anchor** of the resize panel (and the open/close motion).
+  Controls the **visual orientation/anchor** of the resize panel and the open/close motion.
 - `isFitContent?: boolean`  
-  Fit based on content size.
+  Prevents the container from being resized larger than the size of its child content.
 
 ---
 
@@ -145,13 +396,13 @@ containerOpenCloseSubjectMap["right-panel"].next({
 ### Control grow directly with useContainers
 
 `useContainers(layoutName)` returns the actual DOM containers for that layout.  
-It’s useful for cases like: “only the selected tab container has grow=1, the others have grow=0”, with transitions.
+It is useful for cases like: “only the selected tab container has grow=1, the others have grow=0”, with transitions.
 
 ```ts
 import { useContainers } from "@byeolnaerim/flex-layout/providers";
 
 const containers = useContainers(layoutName);
-// e.g. containers.forEach(el => el.style.flex = "1 1 0%");
+// e.g. containers.forEach((el) => (el.style.flex = "1 1 0%"));
 ```
 
 ---
@@ -166,8 +417,6 @@ Split Screen supports the pattern:
 ### 1) FlexLayoutSplitScreen (split root)
 
 ```tsx
-"use client";
-
 import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
 
 export default function Page() {
@@ -196,7 +445,7 @@ export default function Page() {
 - `navigationTitle?: string`: title for tabs/navigation
 - `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`  
   If dropped “outside the screen”, open it as a new window/document.
-- `screenKey?: string`: a unique value used to identify a screen inside `FlexLayoutSplitScreen`. If empty, a 32-character random default is generated. For dynamic split-screen views you can’t control, leaving it empty is recommended.
+- `screenKey?: string`: a unique value used to identify a screen inside `FlexLayoutSplitScreen`. If empty, a 32-character random default is generated. For dynamic split-screen views you cannot control, leaving it empty is recommended.
 
 ---
 
@@ -305,9 +554,10 @@ import {
 
 ## Tips
 
-- Use a meaningful prefix for `containerName` (e.g. `left-container-${id}`, `menu:${identifierId}`)  
-  This makes debugging and preventing collisions much easier in Split Screen.
-- In Next.js, add `"use client"` at the top of files that use these layout components.
+- Use a meaningful prefix for `containerName` (e.g. `left-container-${id}`, `menu:${identifierId}`).
+- In Next.js App Router, the main components already include `"use client"` internally, so you usually do not need to add `"use client"` only because you render `FlexLayout`.
+- If your page also uses client-only hooks such as `useState`, `useEffect`, or event handlers directly, that file still needs to be a Client Component.
+- If a build/environment issue occurs because the package is included in a server-side scope, use a client wrapper or `dynamic(..., { ssr: false })`.
 
 ---
 
