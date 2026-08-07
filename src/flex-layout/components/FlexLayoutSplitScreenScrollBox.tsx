@@ -133,7 +133,13 @@ const FlexLayoutSplitScreenScrollBox: FC<
 					y: scrollRef.current.scrollTop,
 				});
 			}}
-			className={`${className || ""} ${listScrollClassName ? `${listScrollClassName} ${listScroll["default-scroll"]}` : listScroll["list-scroll"]} ${direction ? listScroll[direction] : ""}`}
+			className={`${className || ""} ${
+				listScrollClassName
+					? `${listScrollClassName} ${listScroll["default-scroll"]}`
+					: direction
+						? `${listScroll["list-scroll"]} ${listScroll[direction]}`
+						: listScroll["default-scroll"]
+			}`}
 			{...props}
 		>
 			{children}

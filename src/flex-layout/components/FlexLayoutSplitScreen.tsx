@@ -97,7 +97,6 @@ const generateScreenKey = () => {
 	);
 };
 
-
 const copySplitScreenSubtree = ({
 	rootName,
 	oldLayoutName,
@@ -726,7 +725,9 @@ export default function FlexLayoutSplitScreen({
 											: undefined;
 								const promoted =
 									promotedFrom === "before"
-										? currentBefore[currentBefore.length - 1]
+										? currentBefore[
+												currentBefore.length - 1
+											]
 										: promotedFrom === "after"
 											? currentAfter[0]
 											: undefined;
@@ -1595,7 +1596,7 @@ function FlexLayoutSplitScreenChild({
 													centerDropTargetComponent[0]
 												).containerName
 											}
-														>
+										>
 											{!isOnlyOneScreen && (
 												<div
 													className={`${styles["flex-split-screen-drag-box-title-wrapper-sticky"]}`}
@@ -1612,12 +1613,18 @@ function FlexLayoutSplitScreenChild({
 														className={`${styles["flex-split-screen-drag-box-title-wrapper"]}`}
 													>
 														<FlexLayoutSplitScreenScrollBox
-                                                            key={layoutName}
-                                                            keyName={layoutName}
-                                                            direction="x"
-                                                            className={styles["flex-split-screen-drag-box-title-container"]}
-                                                            data-layout_name={layoutName}
-                                                        >
+															key={layoutName}
+															keyName={layoutName}
+															direction="x"
+															className={
+																styles[
+																	"flex-split-screen-drag-box-title-container"
+																]
+															}
+															data-layout_name={
+																layoutName
+															}
+														>
 															{centerDropTargetComponent.map(
 																(
 																	item,
@@ -1863,8 +1870,9 @@ function FlexLayoutSplitScreenChild({
 																				}
 																			}
 																		>
-																							{item.navigationTitleComponent ?? item.navigationTitle}
-																						</FlexLayoutSplitScreenDragBox>
+																			{item.navigationTitleComponent ??
+																				item.navigationTitle}
+																		</FlexLayoutSplitScreenDragBox>
 																	</FlexLayoutSplitScreenDragBoxItem>
 																),
 															)}
