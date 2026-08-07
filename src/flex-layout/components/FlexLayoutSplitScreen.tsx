@@ -2,19 +2,24 @@
 import {
 	cloneElement,
 	ReactElement,
+	ReactNode,
 	RefObject,
 	useEffect,
 	useRef,
 	useState,
 } from "react";
 import {
+	addSplitScreenLeaf,
 	dropMovementEventSubject,
 	DropPositionOrderName,
 	DropTargetComponent,
+	removeSplitScreenLeaf,
+	useSplitScreenLeafCounts,
 } from "../hooks/useDrag";
 import { useFlexLayoutSplitScreen } from "../hooks/useFlexLayoutSplitScreen";
 import {
 	getCurrentSplitScreenComponents,
+	getLayoutSplitScreenStore,
 	getSplitScreen,
 	removeRootSplitScreen,
 	removeSplitScreenChild,
@@ -30,7 +35,6 @@ import FlexLayoutSplitScreenDragBox, {
 
 import equal from "fast-deep-equal/react";
 import { distinctUntilChanged, take } from "rxjs";
-import FlexLayoutSplitScreenDragBoxContainer from "./FlexLayoutSplitScreenDragBoxContainer";
 import FlexLayoutSplitScreenDragBoxItem from "./FlexLayoutSplitScreenDragBoxItem";
 import FlexLayoutSplitScreenDragBoxTitleMore from "./FlexLayoutSplitScreenDragBoxTitleMore";
 import FlexLayoutSplitScreenScrollBox from "./FlexLayoutSplitScreenScrollBox";
@@ -93,6 +97,65 @@ const generateScreenKey = () => {
 	);
 };
 
+
+const copySplitScreenSubtree = ({
+	rootName,
+	oldLayoutName,
+	newLayoutName,
+	screenKey,
+	oldDepth,
+	newDepth,
+}: {
+	rootName: string;
+	oldLayoutName: string;
+	newLayoutName: string;
+	screenKey: string;
+	oldDepth: number;
+	newDepth: number;
+}) => {
+	const rootStore = getLayoutSplitScreenStore()[rootName];
+	const current = rootStore?.[`${oldLayoutName}=${screenKey}`];
+	if (!current) return;
+
+	setSplitScreen(rootName, `${newLayoutName}=${screenKey}`, current);
+
+	current.beforeDropTargetComponent.forEach((item) => {
+		copySplitScreenSubtree({
+			rootName,
+			oldLayoutName: `${oldLayoutName}_before-${oldDepth}`,
+			newLayoutName: `${newLayoutName}_before-${newDepth}`,
+			screenKey: item.screenKey,
+			oldDepth: oldDepth + 1,
+			newDepth: newDepth + 1,
+		});
+	});
+
+	current.afterDropTargetComponent.forEach((item) => {
+		copySplitScreenSubtree({
+			rootName,
+			oldLayoutName: `${oldLayoutName}_after-${oldDepth}`,
+			newLayoutName: `${newLayoutName}_after-${newDepth}`,
+			screenKey: item.screenKey,
+			oldDepth: oldDepth + 1,
+			newDepth: newDepth + 1,
+		});
+	});
+
+	if (
+		current.beforeDropTargetComponent.length !== 0 ||
+		current.afterDropTargetComponent.length !== 0
+	) {
+		copySplitScreenSubtree({
+			rootName,
+			oldLayoutName: `${oldLayoutName}_center-${oldDepth}`,
+			newLayoutName: `${newLayoutName}_center-${newDepth}`,
+			screenKey,
+			oldDepth: oldDepth + 1,
+			newDepth: newDepth + 1,
+		});
+	}
+};
+
 const handleUpdateDropTargetComponents = ({
 	orderName,
 	parentOrderName,
@@ -101,6 +164,7 @@ const handleUpdateDropTargetComponents = ({
 	layoutName,
 	dropComponent,
 	navigationTitle,
+	navigationTitleComponent,
 	nextContainerName,
 	isUsePrefix = true,
 	beforeDropTargetComponent,
@@ -116,6 +180,7 @@ const handleUpdateDropTargetComponents = ({
 	layoutName: string;
 	dropComponent: ReactElement;
 	navigationTitle?: string;
+	navigationTitleComponent?: ReactNode;
 	nextContainerName?: string;
 	isUsePrefix?: boolean;
 	beforeDropTargetComponent: DropTargetComponent[];
@@ -177,6 +242,7 @@ const handleUpdateDropTargetComponents = ({
 			{ key: screenKey, screenKey },
 		),
 		navigationTitle,
+		navigationTitleComponent,
 		dropDocumentOutsideOption,
 		screenKey: screenKey || generateScreenKey(),
 	};
@@ -619,24 +685,71 @@ export default function FlexLayoutSplitScreen({
 									layoutName,
 									layoutName,
 								);
-							const afterList = handleRemove(
+							const currentAfter =
 								currentComponents?.afterDropTargetComponent ||
-									afterDropTargetComponent,
+								afterDropTargetComponent;
+							const currentBefore =
+								currentComponents?.beforeDropTargetComponent ||
+								beforeDropTargetComponent;
+							const currentCenter =
+								currentComponents?.centerDropTargetComponent ||
+								centerDropTargetComponent;
+							let afterList = handleRemove(
+								currentAfter,
 								event.targetContainerName,
 								() => removeCallback("after"),
 							);
-							const beforList = handleRemove(
-								currentComponents?.beforeDropTargetComponent ||
-									beforeDropTargetComponent,
+							let beforList = handleRemove(
+								currentBefore,
 								event.targetContainerName,
 								() => removeCallback("before"),
 							);
-							const centerList = handleRemove(
-								currentComponents?.centerDropTargetComponent ||
-									centerDropTargetComponent,
+							let centerList = handleRemove(
+								currentCenter,
 								event.targetContainerName,
 								() => removeCallback("center"),
 							);
+
+							if (
+								centerList.length === 0 &&
+								currentCenter.some(
+									(item) =>
+										item.containerName ===
+										event.targetContainerName,
+								)
+							) {
+								const promotedFrom =
+									currentBefore.length !== 0
+										? "before"
+										: currentAfter.length !== 0
+											? "after"
+											: undefined;
+								const promoted =
+									promotedFrom === "before"
+										? currentBefore[currentBefore.length - 1]
+										: promotedFrom === "after"
+											? currentAfter[0]
+											: undefined;
+
+								if (promoted && promotedFrom) {
+									if (promotedFrom === "before") {
+										beforList = currentBefore.slice(0, -1);
+									} else {
+										afterList = currentAfter.slice(1);
+									}
+									centerList = [promoted];
+
+									copySplitScreenSubtree({
+										rootName: layoutName,
+										oldLayoutName: `${layoutName}_${promotedFrom}`,
+										newLayoutName: `${layoutName}_center`,
+										screenKey: promoted.screenKey,
+										oldDepth: 1,
+										newDepth: 0,
+									});
+								}
+							}
+
 							setSplitScreen(layoutName, layoutName, {
 								afterDropTargetComponent: afterList,
 								beforeDropTargetComponent: beforList,
@@ -672,6 +785,7 @@ export default function FlexLayoutSplitScreen({
 						const {
 							direction: dropDirection,
 							navigationTitle,
+							navigationTitleComponent,
 							dropDocumentOutsideOption,
 						} = dropTargetComponentEvent;
 
@@ -696,6 +810,7 @@ export default function FlexLayoutSplitScreen({
 										parentLayoutName: "",
 										layoutName,
 										navigationTitle,
+										navigationTitleComponent,
 										isUsePrefix: true,
 										afterDropTargetComponent,
 										beforeDropTargetComponent,
@@ -863,7 +978,6 @@ export default function FlexLayoutSplitScreen({
 					) : (
 						<FlexLayoutSplitScreenScrollBox
 							keyName={rootCenter.containerName}
-							isDefaultScrollStyle={true}
 						>
 							{rootCenter.component}
 						</FlexLayoutSplitScreenScrollBox>
@@ -1208,6 +1322,7 @@ function FlexLayoutSplitScreenChild({
 						const {
 							direction: dropDirection,
 							navigationTitle,
+							navigationTitleComponent,
 							dropDocumentOutsideOption,
 							screenKey: containerScreenKey,
 						} = dropTargetComponentEvent;
@@ -1238,6 +1353,7 @@ function FlexLayoutSplitScreenChild({
 									dropEndCallback,
 									dropTargetComponentEvent: {
 										navigationTitle,
+										navigationTitleComponent,
 										dropDocumentOutsideOption,
 										direction: parentDirection,
 										screenKey,
@@ -1258,6 +1374,7 @@ function FlexLayoutSplitScreenChild({
 										layoutName,
 										dropComponent: targetComponent,
 										navigationTitle,
+										navigationTitleComponent,
 										isUsePrefix: orderName !== "center",
 										afterDropTargetComponent,
 										beforeDropTargetComponent,
@@ -1356,13 +1473,15 @@ function FlexLayoutSplitScreenChild({
 	//     afterDropTargetComponent,
 	//     centerDropTargetComponent,
 	// ]);
-	const [isOnlyOneScreen, setIsOnlyOneScreen] = useState<boolean>(false);
-	// useEffect(() => {
-	//     const subscribe = allSplitScreenCount.subscribe(allSplitScreenCount => {
-	//         setIsOnlyOneScreen(allSplitScreenCount === 1);
-	//     });
-	//     return () => subscribe.unsubscribe();
-	// }, []);
+	const splitScreenLeafCounts = useSplitScreenLeafCounts();
+	const isOnlyOneScreen =
+		(splitScreenLeafCounts[rootName] || 0) <= 1 &&
+		centerDropTargetComponent.length <= 1;
+
+	useEffect(() => {
+		addSplitScreenLeaf(rootName);
+		return () => removeSplitScreenLeaf(rootName);
+	}, [rootName]);
 
 	return (
 		<>
@@ -1476,8 +1595,7 @@ function FlexLayoutSplitScreenChild({
 													centerDropTargetComponent[0]
 												).containerName
 											}
-											isDefaultScrollStyle={true}
-										>
+														>
 											{!isOnlyOneScreen && (
 												<div
 													className={`${styles["flex-split-screen-drag-box-title-wrapper-sticky"]}`}
@@ -1493,15 +1611,13 @@ function FlexLayoutSplitScreenChild({
 														data-container_name={`${(centerDropTargetComponent[activeIndex] || centerDropTargetComponent[0]).containerName}`}
 														className={`${styles["flex-split-screen-drag-box-title-wrapper"]}`}
 													>
-														<FlexLayoutSplitScreenDragBoxContainer
-															key={layoutName}
-															data-layout_name={
-																layoutName
-															}
-															layoutName={
-																layoutName
-															}
-														>
+														<FlexLayoutSplitScreenScrollBox
+                                                            key={layoutName}
+                                                            keyName={layoutName}
+                                                            direction="x"
+                                                            className={styles["flex-split-screen-drag-box-title-container"]}
+                                                            data-layout_name={layoutName}
+                                                        >
 															{centerDropTargetComponent.map(
 																(
 																	item,
@@ -1747,14 +1863,12 @@ function FlexLayoutSplitScreenChild({
 																				}
 																			}
 																		>
-																			{
-																				item.navigationTitle
-																			}
-																		</FlexLayoutSplitScreenDragBox>
+																							{item.navigationTitleComponent ?? item.navigationTitle}
+																						</FlexLayoutSplitScreenDragBox>
 																	</FlexLayoutSplitScreenDragBoxItem>
 																),
 															)}
-														</FlexLayoutSplitScreenDragBoxContainer>
+														</FlexLayoutSplitScreenScrollBox>
 														<FlexLayoutSplitScreenDragBoxTitleMore></FlexLayoutSplitScreenDragBoxTitleMore>
 													</div>
 												</div>

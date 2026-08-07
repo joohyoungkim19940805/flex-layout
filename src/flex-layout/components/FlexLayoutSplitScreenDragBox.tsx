@@ -19,7 +19,10 @@ import {
 
 import styles from "../styles/FlexLayout.module.css";
 import { isDocumentOut } from "../utils/FlexLayoutUtils";
-import { FlexLayoutIFramePane } from "./FlexLayoutIFramePane";
+import {
+	FlexLayoutIFramePane,
+	type FlexLayoutIFramePaneProps,
+} from "./FlexLayoutIFramePane";
 
 const MAX_STEP = 18;
 
@@ -103,9 +106,16 @@ function createScreenKey() {
 	return `${Date.now().toString(32)}-${Math.random().toString(32).slice(2)}`;
 }
 
-function getFallbackElement(targetComponent?: ReactElement, url?: string) {
+function getFallbackElement(
+	targetComponent: ReactElement | undefined,
+	url: string | undefined,
+	iframe: boolean,
+	iframeProps?: Omit<FlexLayoutIFramePaneProps, "url" | "screenKey">,
+) {
 	if (targetComponent) return targetComponent;
-	if (url) return <FlexLayoutIFramePane url={url} />;
+	if (iframe && url) {
+		return <FlexLayoutIFramePane {...iframeProps} url={url} />;
+	}
 	return undefined;
 }
 
@@ -135,7 +145,11 @@ export interface FlexLayoutSplitScreenDragBoxProps<
 	}) => void;
 	style?: CSSProperties;
 	navigationTitle?: string;
+	navigationTitleComponent?: ReactNode;
 	targetComponent?: ReactElement;
+	url?: string;
+	iframe?: boolean;
+	iframeProps?: Omit<FlexLayoutIFramePaneProps, "url" | "screenKey">;
 	dropDocumentOutsideOption?: DropDocumentOutsideOption;
 	children: ReactNode;
 	containerName: string;
@@ -158,7 +172,11 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	dropEndCallback,
 	style,
 	navigationTitle,
+	navigationTitleComponent,
 	targetComponent,
+	url,
+	iframe = false,
+	iframeProps,
 	containerName,
 	children,
 	className,
@@ -168,7 +186,8 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	customData = {},
 	scrollTargetRef,
 	...props
-}: FlexLayoutSplitScreenDragBoxProps) {
+}: FlexLayoutSplitScreenDragBoxProps<E>) {
+	const renderUrl = url ?? dropDocumentOutsideOption?.openUrl;
 	const [screenKey, setScreenKey] = useState<string>();
 	useEffect(() => {
 		if (!_screenKey) setScreenKey(createScreenKey());
@@ -297,10 +316,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 					isDrop: false,
 					navigationTitle:
 						navigationTitle ??
-						titleFromUrl(dropDocumentOutsideOption?.openUrl),
+						titleFromUrl(renderUrl),
+					navigationTitleComponent,
 					children: getFallbackElement(
 						targetComponent,
-						dropDocumentOutsideOption?.openUrl,
+						renderUrl,
+						iframe,
+						iframeProps,
 					),
 					x,
 					y,
@@ -328,10 +350,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			isDrop: false,
 			navigationTitle:
 				navigationTitle ??
-				titleFromUrl(dropDocumentOutsideOption?.openUrl),
+				titleFromUrl(renderUrl),
+			navigationTitleComponent,
 			children: getFallbackElement(
 				targetComponent,
-				dropDocumentOutsideOption?.openUrl,
+				renderUrl,
+				iframe,
+				iframeProps,
 			),
 			x,
 			y,
@@ -405,10 +430,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 					isDrop: true,
 					navigationTitle:
 						navigationTitle ??
-						titleFromUrl(dropDocumentOutsideOption?.openUrl),
+						titleFromUrl(renderUrl),
+					navigationTitleComponent,
 					children: getFallbackElement(
 						targetComponent,
-						dropDocumentOutsideOption?.openUrl,
+						renderUrl,
+						iframe,
+						iframeProps,
 					),
 					x,
 					y,
@@ -442,7 +470,7 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			const title = document.createElement("span");
 			title.textContent =
 				navigationTitle ??
-				titleFromUrl(dropDocumentOutsideOption?.openUrl) ??
+				titleFromUrl(renderUrl) ??
 				"";
 			clone.prepend(title);
 
@@ -504,11 +532,15 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	}, [
 		customData,
 		targetComponent,
+		renderUrl,
+		iframe,
+		iframeProps,
 		dropDocumentOutsideOption,
 		screenKey,
 		isBlockingActiveInput,
 		containerName,
 		navigationTitle,
+		navigationTitleComponent,
 		dropEndCallback,
 	]);
 
@@ -585,10 +617,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 				isDrop: false,
 				navigationTitle:
 					navigationTitle ??
-					titleFromUrl(dropDocumentOutsideOption?.openUrl),
+					titleFromUrl(renderUrl),
+				navigationTitleComponent,
 				children: getFallbackElement(
 					targetComponent,
-					dropDocumentOutsideOption?.openUrl,
+					renderUrl,
+					iframe,
+					iframeProps,
 				),
 				x,
 				y,
@@ -604,8 +639,12 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		handleEnd,
 		containerName,
 		navigationTitle,
+		navigationTitleComponent,
 		dropDocumentOutsideOption,
 		targetComponent,
+		renderUrl,
+		iframe,
+		iframeProps,
 		customData,
 	]);
 
@@ -650,12 +689,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								isDrop: false,
 								navigationTitle:
 									navigationTitle ??
-									titleFromUrl(
-										dropDocumentOutsideOption?.openUrl,
-									),
+									titleFromUrl(renderUrl),
+								navigationTitleComponent,
 								children: getFallbackElement(
 									targetComponent,
-									dropDocumentOutsideOption?.openUrl,
+									renderUrl,
+									iframe,
+									iframeProps,
 								),
 								x,
 								y,
@@ -698,12 +738,13 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								isDrop: false,
 								navigationTitle:
 									navigationTitle ??
-									titleFromUrl(
-										dropDocumentOutsideOption?.openUrl,
-									),
+									titleFromUrl(renderUrl),
+								navigationTitleComponent,
 								children: getFallbackElement(
 									targetComponent,
-									dropDocumentOutsideOption?.openUrl,
+									renderUrl,
+									iframe,
+									iframeProps,
 								),
 								x,
 								y,

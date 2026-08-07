@@ -18,6 +18,7 @@ import {
 	getResizePanelRef,
 } from "../store/FlexLayoutContainerStore";
 import styles from "../styles/FlexLayout.module.css";
+import type { FlexLayoutResizeMemoryOptions } from "../types/FlexLayoutTypes";
 import {
 	Direction,
 	PanelMovementMode,
@@ -69,6 +70,7 @@ export type FlexLayoutTableProps = {
 	onReachTerminal?: (onReachTerminalData: OnReachTerminalType) => void;
 	scroll?: FlexLayoutTableScrollMode;
 	panelMovementMode?: PanelMovementMode;
+	rememberResize?: FlexLayoutResizeMemoryOptions;
 	resizePanelClassName?: string;
 	resizePanelLineClassName?: string;
 	resizePanelHoverClassName?: string;
@@ -128,6 +130,7 @@ export default function FlexLayoutTable({
 	onReachTerminal,
 	scroll = "window",
 	panelMovementMode = "bulldozer",
+	rememberResize,
 	resizePanelClassName,
 	resizePanelLineClassName,
 	resizePanelHoverClassName,
@@ -684,6 +687,7 @@ export default function FlexLayoutTable({
 						)}
 						panelHoverClassName={resizePanelHoverClassName}
 						panelMovementMode={panelMovementMode}
+						rememberResize={rememberResize}
 						scrollMode={getFlexScrollMode(scroll)}
 					>
 						{headers.map((header, headerIndex) => (

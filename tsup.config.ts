@@ -17,13 +17,19 @@ export default defineConfig({
 
 	esbuildPlugins: [
 		preserveDirectivesPlugin({
-			directives: ["use client"],
+			directives: ["use client", "use server"],
 			include: /\.(js|ts|jsx|tsx)$/,
 			exclude: /node_modules/,
 		}),
 	],
 
-	external: ["react", "react-dom", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react/jsx-runtime",
+		"next",
+		"next/headers",
+	],
 
 	esbuildOptions(options) {
 		options.jsx = "automatic";

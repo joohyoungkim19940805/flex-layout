@@ -1,5 +1,4 @@
-import { MouseEvent, ReactElement, useEffect } from "react";
-import { allSplitScreenCount } from "../hooks/useDrag";
+import { MouseEvent, ReactElement } from "react";
 import styles from "../styles/FlexLayout.module.css";
 import { FlexLayoutSplitScreenDragBoxProps } from "./FlexLayoutSplitScreenDragBox";
 export interface FlexLayoutSplitScreenDragBoxItemProps {
@@ -13,20 +12,19 @@ export default function FlexLayoutSplitScreenDragBoxItem({
 	isActive,
 	...props
 }: FlexLayoutSplitScreenDragBoxItemProps) {
-	useEffect(() => {
-		allSplitScreenCount.next(allSplitScreenCount.value + 1);
-		return () => {
-			if (allSplitScreenCount.value <= 1) return;
-			allSplitScreenCount.next(allSplitScreenCount.value - 1);
-		};
-	}, []);
 	return (
 		<div
 			className={`${styles["flex-split-screen-drag-box-title-item"]} ${isActive ? styles["active"] : ""}`}
 			{...props}
 		>
 			{children}
-			<button type="button" onClick={(ev) => onClose(ev)}>
+			<button
+				type="button"
+				onClick={(ev) => {
+					ev.stopPropagation();
+					onClose(ev);
+				}}
+			>
 				X
 			</button>
 		</div>

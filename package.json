@@ -1,6 +1,6 @@
 {
 	"name": "@byeolnaerim/flex-layout",
-	"version": "0.0.15",
+	"version": "1.0.0",
 	"type": "module",
 	"license": "Apache-2.0",
 	"author": "Joohyoung Kim (@oozu1994)",
@@ -83,6 +83,30 @@
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs",
 			"default": "./dist/index.js"
+		},
+		"./next": {
+			"types": "./dist/next/index.d.ts",
+			"import": "./dist/next/index.js",
+			"require": "./dist/next/index.cjs",
+			"default": "./dist/next/index.js"
+		},
+		"./next/client": {
+			"types": "./dist/next/client.d.ts",
+			"import": "./dist/next/client.js",
+			"require": "./dist/next/client.cjs",
+			"default": "./dist/next/client.js"
+		},
+		"./next/server": {
+			"types": "./dist/next/server/index.d.ts",
+			"import": "./dist/next/server/index.js",
+			"require": "./dist/next/server/index.cjs",
+			"default": "./dist/next/server/index.js"
+		},
+		"./next/generator": {
+			"types": "./dist/next/generator.d.ts",
+			"import": "./dist/next/generator.js",
+			"require": "./dist/next/generator.cjs",
+			"default": "./dist/next/generator.js"
 		}
 	},
 	"scripts": {
@@ -94,7 +118,8 @@
 	},
 	"peerDependencies": {
 		"react": ">=18 <20",
-		"react-dom": ">=18 <20"
+		"react-dom": ">=18 <20",
+		"next": ">=14.2 <17"
 	},
 	"dependencies": {
 		"@byeolnaerim/global-rx-state": ">=0.0.1 <0.1.0",
@@ -104,7 +129,7 @@
 	"devDependencies": {
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
-		"@byeolnaerim/global-rx-state": "0.0.3",
+		"@byeolnaerim/global-rx-state": "0.0.2",
 		"esbuild-plugin-preserve-directives": "^0.0.11",
 		"cpy-cli": "^5",
 		"react": "^19.2.6",
@@ -115,5 +140,10 @@
 	},
 	"overrides": {
 		"esbuild": "0.28.0"
+	},
+	"peerDependenciesMeta": {
+		"next": {
+			"optional": true
+		}
 	}
 }

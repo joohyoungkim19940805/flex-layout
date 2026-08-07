@@ -3,6 +3,7 @@ import equal from "fast-deep-equal/react";
 import {
 	MouseEvent,
 	ReactElement,
+	ReactNode,
 	RefObject,
 	TouchEvent,
 	useCallback,
@@ -23,6 +24,7 @@ export interface DragStateType {
 	isDragging: boolean;
 	isDrop: boolean;
 	navigationTitle?: string;
+	navigationTitleComponent?: ReactNode;
 	children?: ReactElement;
 	containerName: string;
 	x: number;
@@ -157,6 +159,7 @@ export interface DropTargetComponent {
 	containerName: string;
 	component: ReactElement;
 	navigationTitle?: string;
+	navigationTitleComponent?: ReactNode;
 	dropDocumentOutsideOption?: DropDocumentOutsideOption;
 	screenKey: string;
 }
@@ -194,6 +197,39 @@ export const dropMovementEventSubject = new Subject<DropMovementEventType>();
 
 export const [, , useAllSplitScreenCount, allSplitScreenCount] =
 	createRxStateTuple<number>(0, "__flexLayoutAllSplitScreenCount");
+
+export const [
+	setSplitScreenLeafCounts,
+	getSplitScreenLeafCounts,
+	useSplitScreenLeafCounts,
+] = createRxStateTuple<Record<string, number>>(
+	{},
+	"__flexLayoutSplitScreenLeafCounts",
+);
+
+export const addSplitScreenLeaf = (rootName: string) => {
+	const current = getSplitScreenLeafCounts();
+	setSplitScreenLeafCounts({
+		...current,
+		[rootName]: (current[rootName] || 0) + 1,
+	});
+};
+
+export const removeSplitScreenLeaf = (rootName: string) => {
+	const current = getSplitScreenLeafCounts();
+	const nextCount = Math.max((current[rootName] || 0) - 1, 0);
+
+	if (nextCount === 0) {
+		const { [rootName]: _, ...rest } = current;
+		setSplitScreenLeafCounts(rest);
+		return;
+	}
+
+	setSplitScreenLeafCounts({
+		...current,
+		[rootName]: nextCount,
+	});
+};
 
 export const useDragEvents = ({
 	isBlockingActiveInput = false,
