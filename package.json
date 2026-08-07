@@ -1,14 +1,6 @@
 {
 	"name": "@byeolnaerim/flex-layout",
-<<<<<<< HEAD
-<<<<<<< HEAD
-	"version": "0.0.12",
-=======
-	"version": "0.0.14",
->>>>>>> b35c03231aedaefb81406931aae6cc46e17ff0fe
-=======
 	"version": "1.0.0",
->>>>>>> 1d89413fcd1796cf5762be5eeb647a7fbcdd72f8
 	"type": "module",
 	"license": "Apache-2.0",
 	"author": "Joohyoung Kim (@oozu1994)",
