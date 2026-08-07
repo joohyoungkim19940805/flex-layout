@@ -58,6 +58,7 @@ export function useFlexLayoutSplitScreen({
 			children: dropComponent,
 			isOver,
 			navigationTitle,
+			navigationTitleComponent,
 			dropEndCallback,
 			x,
 			y,
@@ -126,6 +127,7 @@ export function useFlexLayoutSplitScreen({
 					dropEndCallback,
 					dropTargetComponentEvent: {
 						navigationTitle,
+						navigationTitleComponent,
 						dropDocumentOutsideOption:
 							dragState?.dropDocumentOutsideOption,
 						direction: dropDirection,

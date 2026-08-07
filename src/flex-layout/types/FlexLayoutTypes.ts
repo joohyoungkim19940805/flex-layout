@@ -108,6 +108,7 @@ export interface FlexLayoutProps extends Omit<
 	isSplitScreen?: boolean;
 	className?: string;
 	panelClassName?: string;
+	panelHoverClassName?: string;
 	panelMovementMode?: PanelMovementMode;
 	/**
 	 * scrollMode
@@ -138,6 +139,7 @@ export type FlexLayoutResizePanelProps = {
 	layoutName: string;
 	panelMovementMode: PanelMovementMode;
 	panelClassName?: string;
+	panelHoverClassName?: string;
 	onResizingChange?: (isResizing: boolean) => void;
 };
 
@@ -146,6 +148,7 @@ export interface FlexLayoutContextValue {
 	direction: Direction;
 	panelMovementMode: PanelMovementMode;
 	panelClassName?: string;
+	panelHoverClassName?: string;
 	containerCount: number;
 	fitContent: FitContent;
 	resizeMemory?: FlexLayoutGrowMemory;

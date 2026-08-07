@@ -1,49 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+	type IframeHTMLAttributes,
+	useEffect,
+	useState,
+} from "react";
 import { combineLatest, distinctUntilChanged, map, startWith } from "rxjs";
 import { dragStateSubject, isResizingSubject } from "../hooks";
+
+export interface FlexLayoutIFramePaneProps
+	extends Omit<IframeHTMLAttributes<HTMLIFrameElement>, "src"> {
+	url: string;
+	screenKey?: string;
+}
 
 export function FlexLayoutIFramePane({
 	url,
 	screenKey,
-}: {
-	url: string;
-	screenKey?: string;
-}) {
+	style,
+	sandbox = "allow-same-origin allow-scripts allow-forms allow-popups",
+	referrerPolicy = "no-referrer",
+	loading = "lazy",
+	...props
+}: FlexLayoutIFramePaneProps) {
 	const [blockPointer, setBlockPointer] = useState(false);
 
 	useEffect(() => {
 		const draggingSubject = dragStateSubject.pipe(
-			map((s) => !!s?.isDragging),
+			map((state) => !!state?.isDragging),
 			startWith(false),
 			distinctUntilChanged(),
 		);
 
-		const sub = combineLatest([draggingSubject, isResizingSubject])
+		const subscription = combineLatest([
+			draggingSubject,
+			isResizingSubject,
+		])
 			.pipe(
 				map(([dragging, resizing]) => dragging || resizing),
 				distinctUntilChanged(),
 			)
 			.subscribe(setBlockPointer);
 
-		return () => sub.unsubscribe();
+		return () => subscription.unsubscribe();
 	}, []);
 
 	return (
 		<iframe
+			{...props}
 			key={screenKey}
 			src={url}
 			style={{
 				width: "100%",
 				height: "100%",
 				border: 0,
-				//리사이즈 및 드래깅 중 ifram이 이벤트 못먹게 방지
-				pointerEvents: blockPointer ? "none" : "auto",
+				...style,
+				// 리사이즈 및 드래깅 중 iframe이 이벤트를 가로채지 않게 한다.
+				pointerEvents: blockPointer ? "none" : style?.pointerEvents,
 			}}
-			sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-			referrerPolicy="no-referrer"
-			loading="lazy"
+			sandbox={sandbox}
+			referrerPolicy={referrerPolicy}
+			loading={loading}
 		/>
 	);
 }

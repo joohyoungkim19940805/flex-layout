@@ -1,7 +1,5 @@
 # @byeolnaerim/flex-layout
 
-> 이 문서는 코드베이스와 사용 사례들을 제공받은 ChatGPT가 작성하였습니다. 문서의 내용이 정확하지 않을 수 있으며, FlexLayout 개발자가 검토 후 재수정할 예정입니다.
-
 React(Next.js)에서 **flex 기반 리사이즈 패널 + 스플릿 스크린 + Drag & Drop** UI를 빠르게 만들기 위한 컴포넌트 모음입니다.
 
 이 라이브러리의 핵심은 **`<FlexLayout />`** 입니다.  
@@ -32,6 +30,7 @@ pnpm add @byeolnaerim/flex-layout
 
 - React >= 18
 - React DOM >= 18
+- Next.js >= 14.2 < 17 (`@byeolnaerim/flex-layout/next` 사용 시, optional peer dependency)
 
 `rxjs (>= 7)`와 `fast-deep-equal (3.1.3)`은 라이브러리 런타임 의존성으로 포함되어 있어 보통 따로 설치할 필요가 없습니다.
 
@@ -473,11 +472,175 @@ import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout";
 
 - `containerName: string` _(필수)_: 드래그 항목 고유 키
 - `children: ReactNode`: 실제 렌더링될 UI
-- `targetComponent?: ReactNode`: 분할 화면에 새로 띄울 컴포넌트
+- `targetComponent?: ReactElement`: 분할 화면에 새로 띄울 컴포넌트
+- `url?: string`: `iframe` 또는 Next.js 전용 DragBox가 렌더링할 URL
+- `iframe?: boolean`: URL을 iframe으로 렌더링할지 여부. 기본값 `false`
+- `iframeProps?: IframeHTMLAttributes<HTMLIFrameElement>`: iframe 속성과 스타일
 - `navigationTitle?: string`
 - `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`
 - `customData?: any`: 드롭 시 함께 전달할 임의 데이터
 - `scrollTargetRef?: RefObject<HTMLElement>`: 드래그 중 스크롤 타겟(옵션)
+
+---
+
+## Next.js App Router: URL 기반 Split Screen
+
+Next.js 전용 진입점은 드롭 대상 컴포넌트를 직접 작성하지 않고 **URL만으로 `app/**/page.tsx`를 분할 화면에 렌더링**합니다.
+
+- `@split` Parallel Route가 필요하지 않습니다.
+- 드롭된 URL에 해당하는 `page.tsx`만 서버에서 동적으로 import합니다.
+- 생성된 정적 import registry를 사용하므로 Turbopack이 import 대상을 빌드 시점에 확인할 수 있습니다.
+- 기본 렌더 방식은 RSC이며 `iframe`은 기본값이 `false`입니다.
+
+### 1. Registry 생성 스크립트
+
+사용 프로젝트의 스크립트 파일 상단에 필요한 앱 설정을 직접 작성합니다. CLI 인자를 전달할 필요가 없습니다.
+
+```js
+// scripts/generateFlexLayoutSplitScreenPageRegistry.mjs
+import { generateFlexLayoutSplitScreenPageRegistry } from "@byeolnaerim/flex-layout/next/generator";
+
+const registryConfigs = [
+	{
+		appDir: "apps/admin/src/app",
+		outFile: "apps/admin/src/generated/flexLayoutPageRegistry.ts",
+		excludedRoutes: [
+			"default-menu/auction-management/analysis-management/register-analysis-target",
+		],
+	},
+	{
+		appDir: "apps/asset_manager/src/app",
+		outFile: "apps/asset_manager/src/generated/flexLayoutPageRegistry.ts",
+		excludedRoutes: [],
+	},
+];
+
+registryConfigs.forEach((config) => {
+	generateFlexLayoutSplitScreenPageRegistry(config);
+});
+```
+
+```json
+{
+	"scripts": {
+		"generate:flex-layout-pages": "node scripts/generateFlexLayoutSplitScreenPageRegistry.mjs",
+		"prebuild": "npm run generate:flex-layout-pages"
+	}
+}
+```
+
+생성 파일은 다음 이름을 공통으로 사용합니다.
+
+```ts
+pageRegistry
+resolvePage
+FlexLayoutNextProvider
+```
+
+주요 생성 옵션:
+
+- `appDir`: 스캔할 Next.js App Router 디렉터리
+- `outFile`: 생성할 TypeScript 파일
+- `excludedRoutes`: registry에서 제외할 URL 패턴 목록
+- `basePath`: Next.js `basePath`를 사용하는 경우 지정
+- `includeLayouts`: 중첩 `layout.tsx`도 조합할지 여부. 기본값 `false`
+- `excludeRootLayout`: `app/layout.tsx` 제외 여부. 기본값 `true`
+- `excludedLayouts`: `appDir` 기준 확장자 없는 layout 경로 목록
+- `providerId`: 동일한 페이지 트리에 registry Provider를 여러 개 둘 때만 직접 지정
+- `cookieOptions`: Server Action render request cookie의 `path`, `domain`, `httpOnly`, `secure`, `sameSite`, `maxAge` 설정
+
+`includeLayouts`는 기본적으로 꺼져 있습니다. 일반적으로 root 또는 상위 layout에는 Header, Sidebar, Provider, FlexLayout shell이 포함되므로 pane 내부에서 다시 조합하면 UI가 중복되거나 재귀 구조가 생길 수 있습니다. 필요한 하위 layout만 명확한 경우에만 활성화하세요.
+
+### 2. 생성된 Provider를 한 번 적용
+
+`FlexLayoutNextProvider`는 일반 `FlexLayout` 전체에 필요한 Provider가 아닙니다. **URL 기반 서버 렌더링 결과가 들어갈 `FlexLayoutSplitScreen` 트리**를 한 번 감싸면 됩니다. DragBox는 다른 위치에 있어도 drop 후 생성된 pane이 이 Provider 아래에 렌더링되면 됩니다.
+
+```tsx
+// app/layout.tsx 또는 FlexLayoutSplitScreen을 렌더링하는 공통 Server Layout
+import FlexLayoutNextProvider from "@/generated/flexLayoutPageRegistry";
+import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
+import type { ReactNode } from "react";
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+	return (
+		<FlexLayoutNextProvider>
+			<FlexLayoutSplitScreen
+				layoutName="root-split-screen"
+				containerName="main-split-screen"
+				navigationTitle="ROOT"
+			>
+				{children}
+			</FlexLayoutSplitScreen>
+		</FlexLayoutNextProvider>
+	);
+}
+```
+
+Provider는 드롭 시 전달된 URL을 짧은 수명의 HTTP-only cookie에 기록하는 Server Action을 내부적으로 호출합니다. cookie 변경으로 현재 RSC 트리가 다시 렌더링되면 생성된 registry가 URL을 해석하고, 해당 `page.tsx`의 서버 렌더 결과를 기존 `FlexLayoutSplitScreen` pane에 병합합니다.
+
+### 3. DragBox에는 URL만 전달
+
+Next 전용 진입점에서 `FlexLayoutSplitScreenDragBox`를 import합니다.
+
+```tsx
+"use client";
+
+import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout/next";
+import Link from "next/link";
+
+export function MenuItem({ url, title }: { url: string; title: string }) {
+	return (
+		<FlexLayoutSplitScreenDragBox
+			url={url}
+			containerName={`menu-${url}`}
+			navigationTitle={title}
+			dropDocumentOutsideOption={{
+				openUrl: url,
+				widthRatio: 0.7,
+				heightRatio: 0.5,
+			}}
+		>
+			<Link href={url}>{title}</Link>
+		</FlexLayoutSplitScreenDragBox>
+	);
+}
+```
+
+`targetComponent`를 직접 전달하면 URL 자동 렌더보다 우선합니다.
+
+### 4. iframe 렌더링
+
+`iframe`은 명시적으로 `true`를 전달한 경우에만 사용합니다. 기본값은 `false`입니다.
+
+```tsx
+<FlexLayoutSplitScreenDragBox
+	url="https://example.com"
+	iframe
+	iframeProps={{
+		title: "External page",
+		sandbox: "allow-same-origin allow-scripts allow-forms allow-popups",
+		referrerPolicy: "no-referrer",
+	}}
+	containerName="external-page"
+	navigationTitle="External page"
+>
+	<div>External page</div>
+</FlexLayoutSplitScreenDragBox>
+```
+
+iframe은 리사이즈 또는 드래그 중 pointer event를 자동으로 차단하며, `iframeProps`로 일반 iframe 속성과 스타일을 재정의할 수 있습니다. iframe 모드에서는 RSC 서버 렌더링을 사용하지 않으므로 `FlexLayoutNextProvider`가 필요하지 않습니다.
+
+### 동작 범위와 제약
+
+- RSC 자동 렌더의 `url`은 현재 Next 앱의 로컬 상대 URL이어야 합니다. 외부/절대 URL은 `iframe`을 사용하세요.
+- Server Component, async page, `cookies()`, `headers()`, 서버 데이터 조회는 서버에서 실행됩니다.
+- URL의 동적 segment와 query string은 `params`, `searchParams`로 page에 전달됩니다.
+- pane은 별도의 Next Router가 아닙니다. page 내부 Client Component의 `usePathname()`, `useParams()`, `useSearchParams()`는 pane URL이 아니라 실제 브라우저 URL을 기준으로 동작합니다.
+- page 내부의 `redirect()`와 `notFound()`는 독립 pane navigation이 아니라 현재 Next route 렌더에 영향을 줄 수 있습니다.
+- `loading.tsx`, `error.tsx`, `not-found.tsx`, metadata는 registry가 자동 조합하지 않습니다.
+- page의 `dynamic`, `revalidate`, `runtime`, `preferredRegion` 같은 route segment config는 pane에 독립적으로 적용되지 않고 Provider가 속한 route의 runtime/cache 정책을 따릅니다.
+- Provider가 `cookies()`를 읽으므로 Provider가 포함된 route tree는 동적 렌더링 대상이 됩니다.
+- Server Action이 필요하므로 `output: "export"`인 정적 export에서는 사용할 수 없습니다. 이 경우 `iframe` 또는 직접 전달한 `targetComponent`를 사용해야 합니다.
 
 ---
 

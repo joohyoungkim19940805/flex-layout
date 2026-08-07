@@ -15,7 +15,7 @@ export interface FlexLayoutSplitScreenScrollBoxProps extends HTMLAttributes<HTML
 	keyName: string;
 	className?: string;
 	direction?: "x" | "y";
-	isDefaultScrollStyle?: boolean;
+	listScrollClassName?: string;
 }
 
 const FlexLayoutSplitScreenScrollBox: FC<
@@ -25,7 +25,7 @@ const FlexLayoutSplitScreenScrollBox: FC<
 	children,
 	keyName,
 	direction,
-	isDefaultScrollStyle = false,
+	listScrollClassName,
 	...props
 }: FlexLayoutSplitScreenScrollBoxProps) => {
 	const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -133,7 +133,7 @@ const FlexLayoutSplitScreenScrollBox: FC<
 					y: scrollRef.current.scrollTop,
 				});
 			}}
-			className={`${className || ""} ${isDefaultScrollStyle ? listScroll["default-scroll"] : listScroll["list-scroll"]} ${direction ? listScroll[direction] : ""}`}
+			className={`${className || ""} ${listScrollClassName ? `${listScrollClassName} ${listScroll["default-scroll"]}` : listScroll["list-scroll"]} ${direction ? listScroll[direction] : ""}`}
 			{...props}
 		>
 			{children}

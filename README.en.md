@@ -1,6 +1,5 @@
 # @byeolnaerim/flex-layout
 
-> This document was drafted by ChatGPT using the codebase and real-world usage examples provided by the FlexLayout developer. It may contain inaccuracies, and the developer will verify and update it after review.
 
 A set of components to quickly build **flex-based resizable panels + split screen + Drag & Drop** UI in React (Next.js).
 
@@ -32,6 +31,7 @@ pnpm add @byeolnaerim/flex-layout
 
 - React >= 18
 - React DOM >= 18
+- Next.js >= 14.2 < 17 (when using `@byeolnaerim/flex-layout/next`; optional peer dependency)
 
 `rxjs (>= 7)` and `fast-deep-equal (3.1.3)` are included as runtime dependencies, so you normally do not need to install them separately.
 
@@ -475,11 +475,175 @@ import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout";
 
 - `containerName: string` _(required)_: unique key for the draggable item
 - `children: ReactNode`: the visible UI
-- `targetComponent?: ReactNode`: component to render in the new split pane
+- `targetComponent?: ReactElement`: component to render in the new split pane
+- `url?: string`: URL rendered by iframe mode or by the Next.js-specific DragBox
+- `iframe?: boolean`: render the URL in an iframe. Defaults to `false`
+- `iframeProps?: IframeHTMLAttributes<HTMLIFrameElement>`: iframe attributes and styles
 - `navigationTitle?: string`
 - `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`
 - `customData?: any`: arbitrary data passed along on drop
 - `scrollTargetRef?: RefObject<HTMLElement>`: scroll target while dragging (optional)
+
+---
+
+## Next.js App Router: URL-based Split Screen
+
+The Next.js entry renders an `app/**/page.tsx` inside a split pane **from only its URL**, without requiring the consumer to build a target component.
+
+- No `@split` Parallel Route is required.
+- Only the `page.tsx` selected by the dropped URL is dynamically imported on the server.
+- The generated registry contains literal static import paths, so Turbopack can discover every candidate at build time.
+- RSC rendering is the default. `iframe` defaults to `false`.
+
+### 1. Generate the registry
+
+Keep the app-specific values as a hardcoded configuration at the top of the consuming project's script. No CLI arguments are required.
+
+```js
+// scripts/generateFlexLayoutSplitScreenPageRegistry.mjs
+import { generateFlexLayoutSplitScreenPageRegistry } from "@byeolnaerim/flex-layout/next/generator";
+
+const registryConfigs = [
+	{
+		appDir: "apps/admin/src/app",
+		outFile: "apps/admin/src/generated/flexLayoutPageRegistry.ts",
+		excludedRoutes: [
+			"default-menu/auction-management/analysis-management/register-analysis-target",
+		],
+	},
+	{
+		appDir: "apps/asset_manager/src/app",
+		outFile: "apps/asset_manager/src/generated/flexLayoutPageRegistry.ts",
+		excludedRoutes: [],
+	},
+];
+
+registryConfigs.forEach((config) => {
+	generateFlexLayoutSplitScreenPageRegistry(config);
+});
+```
+
+```json
+{
+	"scripts": {
+		"generate:flex-layout-pages": "node scripts/generateFlexLayoutSplitScreenPageRegistry.mjs",
+		"prebuild": "npm run generate:flex-layout-pages"
+	}
+}
+```
+
+Generated files use generic exports:
+
+```ts
+pageRegistry
+resolvePage
+FlexLayoutNextProvider
+```
+
+Main generator options:
+
+- `appDir`: Next.js App Router directory to scan
+- `outFile`: generated TypeScript output
+- `excludedRoutes`: URL patterns excluded from the registry
+- `basePath`: set this when the Next.js app uses `basePath`
+- `includeLayouts`: compose ancestor `layout.tsx` modules. Defaults to `false`
+- `excludeRootLayout`: exclude `app/layout.tsx`. Defaults to `true`
+- `excludedLayouts`: extensionless layout paths relative to `appDir`
+- `providerId`: only needed when multiple generated providers share the same page tree
+- `cookieOptions`: `path`, `domain`, `secure`, `sameSite`, and `maxAge` for the Server Action render-request cookie
+
+`includeLayouts` is intentionally disabled by default. Root and upper layouts commonly contain headers, sidebars, providers, or the FlexLayout shell itself. Re-applying them inside a pane can duplicate the shell or create recursive UI. Enable it only when the required nested layouts are known and safe.
+
+### 2. Mount the generated Provider once
+
+`FlexLayoutNextProvider` is not required around every regular `FlexLayout`. Wrap the **`FlexLayoutSplitScreen` tree that will receive URL-based server-rendered panes** once. The DragBox may live elsewhere; the dropped pane only needs to render under this Provider.
+
+```tsx
+// app/layout.tsx or a shared Server Layout that renders FlexLayoutSplitScreen
+import FlexLayoutNextProvider from "@/generated/flexLayoutPageRegistry";
+import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
+import type { ReactNode } from "react";
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+	return (
+		<FlexLayoutNextProvider>
+			<FlexLayoutSplitScreen
+				layoutName="root-split-screen"
+				containerName="main-split-screen"
+				navigationTitle="ROOT"
+			>
+				{children}
+			</FlexLayoutSplitScreen>
+		</FlexLayoutNextProvider>
+	);
+}
+```
+
+On drop, the Provider internally invokes a Server Action that records the requested URL in a short-lived HTTP-only cookie. The cookie mutation rerenders the current RSC tree, the generated registry resolves the URL, and the server-rendered `page.tsx` node is merged into the existing `FlexLayoutSplitScreen` pane.
+
+### 3. Pass only the URL to the DragBox
+
+Import `FlexLayoutSplitScreenDragBox` from the Next.js entry.
+
+```tsx
+"use client";
+
+import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout/next";
+import Link from "next/link";
+
+export function MenuItem({ url, title }: { url: string; title: string }) {
+	return (
+		<FlexLayoutSplitScreenDragBox
+			url={url}
+			containerName={`menu-${url}`}
+			navigationTitle={title}
+			dropDocumentOutsideOption={{
+				openUrl: url,
+				widthRatio: 0.7,
+				heightRatio: 0.5,
+			}}
+		>
+			<Link href={url}>{title}</Link>
+		</FlexLayoutSplitScreenDragBox>
+	);
+}
+```
+
+An explicitly supplied `targetComponent` takes precedence over automatic URL rendering.
+
+### 4. iframe rendering
+
+An iframe is used only when `iframe` is explicitly set to `true`. The default is `false`.
+
+```tsx
+<FlexLayoutSplitScreenDragBox
+	url="https://example.com"
+	iframe
+	iframeProps={{
+		title: "External page",
+		sandbox: "allow-same-origin allow-scripts allow-forms allow-popups",
+		referrerPolicy: "no-referrer",
+	}}
+	containerName="external-page"
+	navigationTitle="External page"
+>
+	<div>External page</div>
+</FlexLayoutSplitScreenDragBox>
+```
+
+The iframe automatically disables pointer events while a FlexLayout drag or resize operation is active. Standard iframe attributes and styles can be overridden through `iframeProps`. Iframe mode does not use RSC server rendering, so `FlexLayoutNextProvider` is not required for that pane.
+
+### Scope and limitations
+
+- The RSC renderer accepts only local relative URLs in the current Next app. Use `iframe` for external or absolute URLs.
+- Server Components, async pages, `cookies()`, `headers()`, and server-side data access execute on the server.
+- Dynamic URL segments and query strings are passed to the page as `params` and `searchParams`.
+- A pane is not an independent Next Router. Client Components inside the page still resolve `usePathname()`, `useParams()`, and `useSearchParams()` against the browser's real URL, not the pane URL.
+- `redirect()` and `notFound()` inside an imported page can affect the containing Next route rather than only the pane.
+- `loading.tsx`, `error.tsx`, `not-found.tsx`, and metadata are not automatically composed by the registry.
+- Route segment configuration such as `dynamic`, `revalidate`, `runtime`, and `preferredRegion` is not applied independently to a pane; the containing route controls runtime and caching.
+- Because the Provider reads `cookies()`, the route tree containing it becomes dynamically rendered.
+- Server Actions require a server and do not work with `output: "export"`. Use `iframe` or an explicit `targetComponent` for static exports.
 
 ---
 
