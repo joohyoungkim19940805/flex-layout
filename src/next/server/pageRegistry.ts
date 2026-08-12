@@ -29,7 +29,7 @@ function normalizeBasePath(basePath?: string) {
 }
 
 function normalizeUrl(url: string, basePath?: string) {
-	const parsed = new URL(url, "http://flex-layout.local");
+	const parsed = new URL(url, "https://flex-layout-dummy-url.invalid");
 	const normalizedBasePath = normalizeBasePath(basePath);
 	let pathname = parsed.pathname;
 

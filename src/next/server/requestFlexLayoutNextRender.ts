@@ -41,8 +41,8 @@ function validateRequest(request: FlexLayoutNextRenderRequest) {
 
 	try {
 		if (
-			new URL(request.url, "http://flex-layout.local").origin !==
-			"http://flex-layout.local"
+			new URL(request.url, "https://flex-layout-dummy-url.invalid").origin !==
+			"https://flex-layout-dummy-url.invalid"
 		) {
 			throw new Error();
 		}
