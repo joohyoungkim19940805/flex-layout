@@ -409,8 +409,7 @@ const containers = useContainers(layoutName);
 
 ## Split Screen
 
-Split Screen supports the pattern:  
-“drag and drop to left/right/top/bottom/center → dynamically create a new split view at that position.”
+Split Screen supports the pattern: “drag a screen to the left/right/top/bottom/center → dynamically create a new split view at that position.” Multiple screens in the same center area are managed like tabs, and their titles can be reordered with drag and drop.
 
 ⚠️ Note: `FlexLayoutSplitScreen` has not been thoroughly validated for stability in real-world usage. It may not behave as you expect.
 
@@ -440,12 +439,147 @@ export default function Page() {
 **Props (summary)**
 
 - `layoutName: string`: root key of the split-screen tree
-- `containerName: string`: key for this screen/container
-- `children: ReactNode`
-- `navigationTitle?: string`: title for tabs/navigation
-- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`  
-  If dropped “outside the screen”, open it as a new window/document.
-- `screenKey?: string`: a unique value used to identify a screen inside `FlexLayoutSplitScreen`. If empty, a 32-character random default is generated. For dynamic split-screen views you cannot control, leaving it empty is recommended.
+- `containerName: string`: key of the initial center screen
+- `children: ReactElement`: screen rendered in the initial center
+- `navigationTitle: string`: label of the initial screen in the tab/navigation area
+- `navigationTitleComponent?: ReactElement<{ children?: ReactNode }>`: shared wrapper used when each tab's `navigationTitle` string is rendered
+- `dropGuideComponent?: ReactNode`: guide UI shown over an available split-drop area while dragging. Uses the default guide when omitted
+- `titleMoreButtonComponent?: ReactNode`: More trigger at the right side of the title area. `undefined` uses the default `...`; `null` hides More
+- `renderTitleMoreMenu?: (context) => ReactNode`: replaces the complete default More menu content
+- `renderTitleMoreMenuItems?: (context) => ReactNode`: appends consumer-defined items after the default More menu items
+- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`: URL/window options used for document-outside drop and “Open in new window”
+- `screenKey?: string`: screen identity key. Generated internally when omitted
+- `isResetOnChildrenChange?: boolean`: whether to reset the split store when `children` changes. Defaults to `true`
+- `isRemoveStoreOnUnmount?: boolean`: whether to remove the root split-screen store on unmount. Defaults to `true`
+
+### 2) Roles of `navigationTitle` and `navigationTitleComponent`
+
+`navigationTitle` is **label data for a screen**. `navigationTitleComponent` is a **shared wrapper** used by the receiving Split Screen when that label is actually rendered in the title UI.
+
+`FlexLayoutSplitScreenDragBox` carries only the `navigationTitle` string. It does not carry `navigationTitleComponent`, so when a screen is moved to another Split Screen, its title adopts the **destination Split Screen's `navigationTitleComponent` styling**.
+
+```tsx
+import type { ReactNode } from "react";
+import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
+
+function SplitScreenTitle({ children }: { children?: ReactNode }) {
+	return <strong className="split-screen-title">{children}</strong>;
+}
+
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="Dashboard"
+	navigationTitleComponent={<SplitScreenTitle />}
+>
+	<div>Dashboard content</div>
+</FlexLayoutSplitScreen>;
+```
+
+Conceptually, the initial title above is rendered as `<SplitScreenTitle>Dashboard</SplitScreenTitle>`. If a DragBox with `navigationTitle="Users"` is later dropped into the same Split Screen, `Users` is rendered through the same wrapper.
+
+### 3) Customize the split-drop guide
+
+While dragging over an actual split-drop area, Split Screen shows the default `⬇️드롭하면 화면이 분할됩니다.` guide. Pass `dropGuideComponent` to replace only that UI.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="Dashboard"
+	dropGuideComponent={<div>Drop here to create another view.</div>}
+>
+	<div>Dashboard content</div>
+</FlexLayoutSplitScreen>
+```
+
+The title area is handled separately as the tab-reorder drop zone, so the split guide is not shown while reordering titles.
+
+### 4) Reorder tab titles
+
+Center tabs in the same Split Screen can be reordered by dragging their titles.
+
+- Drop on the **left half** of a title → move before the target
+- Drop on the **right half** of a title → move after the target
+- The active tab is preserved by `screenKey` even when other tabs move around it
+- Dragging out of the title area and into an actual Split Screen drop region continues to use the existing screen-splitting drag behavior
+
+### 5) Default More menu
+
+The default `...` button at the right side of the title area provides these actions for the active tab:
+
+1. Close current tab
+2. Close all other tabs
+3. Close all tabs to the right
+4. Close all tabs in the current split
+5. Open in a new window when `dropDocumentOutsideOption.openUrl` is available
+
+The More menu is rendered into `document.body` with a React Portal, so it is not clipped by Split Screen overflow. Its position is calculated from the trigger rectangle and actual menu size, clamped to the viewport, and recalculated on scroll/resize. Outside pointer down or `Escape` closes it.
+
+### 6) Extend the More trigger and menu
+
+`titleMoreButtonComponent`, `renderTitleMoreMenuItems`, and `renderTitleMoreMenu` customize different layers.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="Dashboard"
+	titleMoreButtonComponent={<button type="button">Menu</button>}
+	renderTitleMoreMenuItems={(context) => (
+		<button
+			type="button"
+			onClick={() => {
+				console.log(context.activeItem);
+				context.closeMenu();
+			}}
+		>
+			Custom action
+		</button>
+	)}
+>
+	<div>Dashboard content</div>
+</FlexLayoutSplitScreen>
+```
+
+- `titleMoreButtonComponent`: replaces only the `...` trigger
+- `renderTitleMoreMenuItems`: keeps the five built-in actions and appends custom menu items
+- `renderTitleMoreMenu`: replaces all default menu content while retaining the library-managed Portal, positioning, outside-click handling, and Escape handling
+
+The context passed to `renderTitleMoreMenu` / `renderTitleMoreMenuItems` includes:
+
+- identity: `rootName`, `layoutName`, `containerName`, `screenKey`
+- active tab: `activeItem`, `activeIndex`
+- all center tabs: `items`
+- menu control: `closeMenu()`
+- built-in actions: `closeCurrentTab()`, `closeOtherTabs()`, `closeTabsToRight()`, `closeAllTabs()`, `openInNewWindow()`
+- availability flags: `canCloseOtherTabs`, `canCloseTabsToRight`, `canOpenInNewWindow`
+
+To replace the whole menu content:
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="Dashboard"
+	renderTitleMoreMenu={(context) => (
+		<div role="menu">
+			<button type="button" onClick={context.closeCurrentTab}>
+				Close current view
+			</button>
+			<button type="button" onClick={context.closeMenu}>
+				Close menu
+			</button>
+		</div>
+	)}
+>
+	<div>Dashboard content</div>
+</FlexLayoutSplitScreen>
+```
+
+### 7) Cancel an active drag
+
+Press `Escape` while dragging a `FlexLayoutSplitScreenDragBox` to cancel the current drag. The drag clone and pending drag state are cleared, `isDragging: false` / `isDrop: false` is emitted, the split-drop guide disappears immediately, and the following mouse/touch end does not perform a drop.
 
 ---
 
@@ -479,10 +613,12 @@ import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout";
 - `url?: string`: URL rendered by iframe mode or by the Next.js-specific DragBox
 - `iframe?: boolean`: render the URL in an iframe. Defaults to `false`
 - `iframeProps?: IframeHTMLAttributes<HTMLIFrameElement>`: iframe attributes and styles
-- `navigationTitle?: string`
-- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`
-- `customData?: any`: arbitrary data passed along on drop
+- `navigationTitle?: string`: label data for the dropped screen. Title rendering style belongs to the destination `FlexLayoutSplitScreen.navigationTitleComponent`, not the DragBox
+- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`
+- `customData?: Record<string, string | number | boolean | undefined>`: custom data carried with the drag state
 - `scrollTargetRef?: RefObject<HTMLElement>`: scroll target while dragging (optional)
+
+Press `Escape` during a drag to cancel it without executing the drop callback or creating a split.
 
 ---
 

@@ -44,7 +44,7 @@ export default function FlexLayoutNextPane({
 				{errorComponent ?? (
 					<FlexLayoutNextErrorPane
 						url={url}
-						message="FlexLayoutNextProvider is not mounted."
+						message="FlexLayoutNextSplitScreen is not mounted."
 					/>
 				)}
 			</>

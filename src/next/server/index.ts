@@ -1,11 +1,11 @@
 export {
-	createFlexLayoutNextProvider,
-	FlexLayoutNextProvider,
-} from "./FlexLayoutNextProvider";
+	createFlexLayoutNextSplitScreen,
+	FlexLayoutNextSplitScreen,
+} from "./FlexLayoutNextSplitScreen";
 export type {
-	CreateFlexLayoutNextProviderOptions,
-	FlexLayoutNextProviderProps,
-} from "./FlexLayoutNextProvider";
+	CreateFlexLayoutNextSplitScreenOptions,
+	FlexLayoutNextSplitScreenProps,
+} from "./FlexLayoutNextSplitScreen";
 export {
 	resolvePageFromRegistry,
 } from "./pageRegistry";
@@ -26,4 +26,5 @@ export type {
 	FlexLayoutNextResolvedPage,
 	FlexLayoutNextRouteValue,
 	FlexLayoutNextSearchParams,
+	FlexLayoutNextSplitScreenPersistenceOptions,
 } from "../types";

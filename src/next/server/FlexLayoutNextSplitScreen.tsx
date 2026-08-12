@@ -6,6 +6,7 @@ import type {
 	FlexLayoutNextPageResolver,
 	FlexLayoutNextRenderRequest,
 	FlexLayoutNextRenderedPane,
+	FlexLayoutNextSplitScreenPersistenceOptions,
 } from "../types";
 import { renderResolvedPage } from "./renderResolvedPage";
 import { requestFlexLayoutNextRender } from "./requestFlexLayoutNextRender";
@@ -124,7 +125,7 @@ async function renderRequestedPane({
 		};
 	} catch (error) {
 		console.error(
-			"[FlexLayoutNextProvider] Failed to resolve or render a generated page entry.",
+			"[FlexLayoutNextSplitScreen] Failed to resolve or render a generated page entry.",
 			error,
 		);
 
@@ -137,7 +138,7 @@ async function renderRequestedPane({
 	}
 }
 
-export interface FlexLayoutNextProviderProps {
+export interface FlexLayoutNextSplitScreenProps {
 	children: ReactNode;
 	resolvePage: FlexLayoutNextPageResolver;
 	providerId?: string;
@@ -147,21 +148,25 @@ export interface FlexLayoutNextProviderProps {
 		error: unknown,
 		url: string,
 	) => ReactNode | Promise<ReactNode>;
+	persistence?: FlexLayoutNextSplitScreenPersistenceOptions;
 }
 
-export async function FlexLayoutNextProvider({
+export async function FlexLayoutNextSplitScreen({
 	children,
 	resolvePage,
 	providerId,
 	cookieOptions = {},
 	renderNotFound,
 	renderImportError,
-}: FlexLayoutNextProviderProps) {
+	persistence,
+}: FlexLayoutNextSplitScreenProps) {
 	const cookieName = getCookieName(providerId);
 	const request = readRenderRequest((await cookies()).get(cookieName)?.value);
 
 	return (
 		<FlexLayoutNextClientProvider
+			providerId={normalizeProviderId(providerId)}
+			persistence={persistence}
 			requestRenderAction={requestFlexLayoutNextRender.bind(
 				null,
 				cookieName,
@@ -183,23 +188,25 @@ export async function FlexLayoutNextProvider({
 	);
 }
 
-export type CreateFlexLayoutNextProviderOptions = Omit<
-	FlexLayoutNextProviderProps,
+export type CreateFlexLayoutNextSplitScreenOptions = Omit<
+	FlexLayoutNextSplitScreenProps,
 	"children"
 >;
 
-export function createFlexLayoutNextProvider(
-	options: CreateFlexLayoutNextProviderOptions,
+export function createFlexLayoutNextSplitScreen(
+	options: CreateFlexLayoutNextSplitScreenOptions,
 ) {
-	return async function GeneratedFlexLayoutNextProvider({
+	return async function GeneratedFlexLayoutNextSplitScreen({
 		children,
+		persistence = options.persistence,
 	}: {
 		children: ReactNode;
+		persistence?: FlexLayoutNextSplitScreenPersistenceOptions;
 	}) {
 		return (
-			<FlexLayoutNextProvider {...options}>
+			<FlexLayoutNextSplitScreen {...options} persistence={persistence}>
 				{children}
-			</FlexLayoutNextProvider>
+			</FlexLayoutNextSplitScreen>
 		);
 	};
 }

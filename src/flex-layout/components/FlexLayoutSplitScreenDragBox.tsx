@@ -145,7 +145,6 @@ export interface FlexLayoutSplitScreenDragBoxProps<
 	}) => void;
 	style?: CSSProperties;
 	navigationTitle?: string;
-	navigationTitleComponent?: ReactNode;
 	targetComponent?: ReactElement;
 	url?: string;
 	iframe?: boolean;
@@ -172,7 +171,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 	dropEndCallback,
 	style,
 	navigationTitle,
-	navigationTitleComponent,
 	targetComponent,
 	url,
 	iframe = false,
@@ -317,7 +315,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 					navigationTitle:
 						navigationTitle ??
 						titleFromUrl(renderUrl),
-					navigationTitleComponent,
 					children: getFallbackElement(
 						targetComponent,
 						renderUrl,
@@ -345,13 +342,17 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 
 		clonedNodeRef.current?.remove();
 
-		emitDragState({
+		if (rafId.current !== null) {
+			cancelAnimationFrame(rafId.current);
+			rafId.current = null;
+		}
+		pending.current = null;
+		dragStateSubject.next({
 			isDragging: false,
 			isDrop: false,
 			navigationTitle:
 				navigationTitle ??
 				titleFromUrl(renderUrl),
-			navigationTitleComponent,
 			children: getFallbackElement(
 				targetComponent,
 				renderUrl,
@@ -431,7 +432,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 					navigationTitle:
 						navigationTitle ??
 						titleFromUrl(renderUrl),
-					navigationTitleComponent,
 					children: getFallbackElement(
 						targetComponent,
 						renderUrl,
@@ -540,7 +540,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		isBlockingActiveInput,
 		containerName,
 		navigationTitle,
-		navigationTitleComponent,
 		dropEndCallback,
 	]);
 
@@ -590,47 +589,15 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 			e.preventDefault();
 			e.stopPropagation();
 
-			// 다음 mouseup이 와도 drop 로직 안 타게
-			escCanceledRef.current = true;
-
-			// 스크롤/RAF 정리
-			if (scrollRAF.current !== null) {
-				cancelAnimationFrame(scrollRAF.current);
-				scrollRAF.current = null;
-			}
-			velocity.current = { vx: 0, vy: 0 };
-
-			// clone 제거
-			clonedNodeRef.current?.remove();
-
-			//  useDragEvents 내부 상태도 "끝"으로 만들어 좀비 드래그 방지
-			// (좌표는 hook이 마지막 좌표를 들고 있거나, 아래 emit에선 lastPointRef를 사용)
+			// useDragEvents 내부 상태를 먼저 종료해 이후 mouseup이 drop으로 이어지지 않게 한다.
 			handleEnd({
 				event: new Event("pointercancel"),
 				dragEndCallback: () => {},
 			});
 
-			// overlay 등 외부 UI도 즉시 종료시키기
-			const { x, y } = lastPointRef.current;
-			emitDragState({
-				isDragging: false,
-				isDrop: false,
-				navigationTitle:
-					navigationTitle ??
-					titleFromUrl(renderUrl),
-				navigationTitleComponent,
-				children: getFallbackElement(
-					targetComponent,
-					renderUrl,
-					iframe,
-					iframeProps,
-				),
-				x,
-				y,
-				containerName,
-				dropDocumentOutsideOption,
-				customData,
-			});
+			// 대기 중인 drag RAF까지 취소하고 취소 상태를 즉시 발행한다.
+			escCanceledRef.current = false;
+			cancelDragVisualState();
 		};
 
 		window.addEventListener("keydown", onKeyDown, true);
@@ -639,7 +606,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 		handleEnd,
 		containerName,
 		navigationTitle,
-		navigationTitleComponent,
 		dropDocumentOutsideOption,
 		targetComponent,
 		renderUrl,
@@ -690,7 +656,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								navigationTitle:
 									navigationTitle ??
 									titleFromUrl(renderUrl),
-								navigationTitleComponent,
 								children: getFallbackElement(
 									targetComponent,
 									renderUrl,
@@ -739,7 +704,6 @@ export default function FlexLayoutSplitScreenDragBox<E extends HTMLElement>({
 								navigationTitle:
 									navigationTitle ??
 									titleFromUrl(renderUrl),
-								navigationTitleComponent,
 								children: getFallbackElement(
 									targetComponent,
 									renderUrl,

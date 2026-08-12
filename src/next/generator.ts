@@ -250,7 +250,7 @@ export function generateFlexLayoutSplitScreenPageRegistry({
 	const content = `/* AUTO-GENERATED FILE. DO NOT EDIT. */
 
 import {
-\tcreateFlexLayoutNextProvider,
+\tcreateFlexLayoutNextSplitScreen,
 \tresolvePageFromRegistry,
 \ttype FlexLayoutNextPageImporter,
 \ttype FlexLayoutNextPageRegistry,
@@ -268,13 +268,13 @@ export function resolvePage(url: string) {
 \t});
 }
 
-export const FlexLayoutNextProvider = createFlexLayoutNextProvider({
+export const FlexLayoutNextSplitScreen = createFlexLayoutNextSplitScreen({
 \tresolvePage,
 \tproviderId: ${JSON.stringify(generatedProviderId)},
 \tcookieOptions: ${JSON.stringify(cookieOptions)},
 });
 
-export default FlexLayoutNextProvider;
+export default FlexLayoutNextSplitScreen;
 `;
 
 	fs.mkdirSync(path.dirname(resolvedOutFile), { recursive: true });

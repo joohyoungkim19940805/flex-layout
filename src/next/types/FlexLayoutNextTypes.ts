@@ -1,3 +1,4 @@
+import type { RxStateStorageOptions } from "@byeolnaerim/global-rx-state";
 import type { ReactNode } from "react";
 
 export type FlexLayoutNextRouteValue =
@@ -73,4 +74,35 @@ export type FlexLayoutNextCookieOptions = {
 	secure?: boolean;
 	sameSite?: "lax" | "strict" | "none";
 	maxAge?: number;
+};
+
+
+export type FlexLayoutNextSplitScreenPersistenceOptions = Omit<
+	RxStateStorageOptions,
+	"storage"
+> & {
+	/** Persistent storage backend. `in-memory` is intentionally not supported. */
+	storage: Exclude<NonNullable<RxStateStorageOptions["storage"]>, "in-memory">;
+
+	/**
+	 * Stable global-rx-state key.
+	 * Defaults to `__flexLayoutNextSplitScreen:${providerId}`.
+	 */
+	keyName?: string;
+
+	/**
+	 * Restore persisted URL-backed split panes after a full browser reload.
+	 * When false, split-screen persistence is disabled.
+	 * default = true
+	 */
+	restoreOnReload?: boolean;
+
+	/**
+	 * Keep a separate split-screen snapshot for each pathname + search URL.
+	 * Navigating back/forward or revisiting a URL restores that URL's workspace.
+	 * Full browser reload restores the snapshot for the current URL.
+	 * Requires `restoreOnReload` to be enabled.
+	 * default = false
+	 */
+	syncWithBrowserUrl?: boolean;
 };

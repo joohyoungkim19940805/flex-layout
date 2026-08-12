@@ -4,6 +4,10 @@ import type { ReactElement, ReactNode } from "react";
 import CoreFlexLayoutSplitScreenDragBox, {
 	type FlexLayoutSplitScreenDragBoxProps,
 } from "../../flex-layout/components/FlexLayoutSplitScreenDragBox";
+import {
+	FLEX_LAYOUT_NEXT_PERSISTABLE,
+	FLEX_LAYOUT_NEXT_URL,
+} from "../persistence/FlexLayoutNextPersistence";
 import FlexLayoutNextPane from "./FlexLayoutNextPane";
 
 export interface FlexLayoutNextSplitScreenDragBoxProps<
@@ -29,14 +33,26 @@ export default function FlexLayoutNextSplitScreenDragBox<
 	errorComponent,
 	children,
 	containerName,
+	customData = {},
 	...props
 }: FlexLayoutNextSplitScreenDragBoxProps<E>) {
+	const isPersistableNextUrlPane = !targetComponent && !iframe;
+
 	return (
 		<CoreFlexLayoutSplitScreenDragBox
 			{...props}
 			url={url}
 			iframe={iframe}
 			containerName={containerName}
+			customData={{
+				...customData,
+				...(isPersistableNextUrlPane
+					? {
+						[FLEX_LAYOUT_NEXT_URL]: url,
+						[FLEX_LAYOUT_NEXT_PERSISTABLE]: true,
+					  }
+					: {}),
+			}}
 			targetComponent={
 				targetComponent ??
 				(iframe ? undefined : (

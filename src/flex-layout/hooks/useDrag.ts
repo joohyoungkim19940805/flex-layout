@@ -3,7 +3,6 @@ import equal from "fast-deep-equal/react";
 import {
 	MouseEvent,
 	ReactElement,
-	ReactNode,
 	RefObject,
 	TouchEvent,
 	useCallback,
@@ -24,7 +23,6 @@ export interface DragStateType {
 	isDragging: boolean;
 	isDrop: boolean;
 	navigationTitle?: string;
-	navigationTitleComponent?: ReactNode;
 	children?: ReactElement;
 	containerName: string;
 	x: number;
@@ -159,9 +157,9 @@ export interface DropTargetComponent {
 	containerName: string;
 	component: ReactElement;
 	navigationTitle?: string;
-	navigationTitleComponent?: ReactNode;
 	dropDocumentOutsideOption?: DropDocumentOutsideOption;
 	screenKey: string;
+	customData?: Record<string, string | number | boolean | undefined>;
 }
 export type DropPositionOrderName = "before" | "center" | "after";
 

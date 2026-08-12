@@ -58,11 +58,11 @@ export function useFlexLayoutSplitScreen({
 			children: dropComponent,
 			isOver,
 			navigationTitle,
-			navigationTitleComponent,
 			dropEndCallback,
 			x,
 			y,
 			screenKey,
+			customData,
 		} = dragState;
 
 		const orderName =
@@ -77,9 +77,32 @@ export function useFlexLayoutSplitScreen({
 		//     return;
 		// }
 
-		if ((isOver || isDrop) && boundaryContainerSize) {
+		if (!isDragging && !isDrop) {
+			if (boundaryContainerSize) setBoundaryContainerSize(null);
+			return;
+		}
+
+		const isTitleAreaTarget =
+			typeof document !== "undefined" &&
+			Array.from(
+				document.querySelectorAll<HTMLElement>(
+					"[data-flex-split-screen-title-layout-name]",
+				),
+			).some((element) => {
+				const rect = element.getBoundingClientRect();
+				return (
+					x >= rect.left &&
+					x <= rect.right &&
+					y >= rect.top &&
+					y <= rect.bottom
+				);
+			});
+
+		if ((isOver || isDrop || isTitleAreaTarget) && boundaryContainerSize) {
 			setBoundaryContainerSize(null);
 		}
+
+		if (isTitleAreaTarget) return;
 
 		if (
 			selfContainerName === containerName ||
@@ -127,11 +150,11 @@ export function useFlexLayoutSplitScreen({
 					dropEndCallback,
 					dropTargetComponentEvent: {
 						navigationTitle,
-						navigationTitleComponent,
 						dropDocumentOutsideOption:
 							dragState?.dropDocumentOutsideOption,
 						direction: dropDirection,
 						screenKey,
+						customData,
 					},
 				});
 				// } else {

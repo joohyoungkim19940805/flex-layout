@@ -389,6 +389,23 @@
 .flex-split-screen-drag-box-title-item {
 	display: flex;
 	align-items: baseline;
+	position: relative;
+	&[data-drag-position="before"]::before,
+	&[data-drag-position="after"]::after {
+		content: "";
+		position: absolute;
+		top: 0.2rem;
+		bottom: 0.2rem;
+		width: 2px;
+		background: #00acc1;
+		z-index: 1;
+	}
+	&[data-drag-position="before"]::before {
+		left: 0;
+	}
+	&[data-drag-position="after"]::after {
+		right: 0;
+	}
 	padding-right: 0.5rem;
 	padding-left: 0.1rem;
 	&:last-child:not(:first-child) {
@@ -457,6 +474,73 @@
 		transform: scale(0.97);
 	}
 }
+.flex-split-screen-drag-box-title-more-anchor {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: stretch;
+}
+.flex-split-screen-drag-box-title-more-menu-positioner {
+	position: fixed;
+	z-index: 10000;
+	width: max-content;
+	max-width: calc(100vw - 16px);
+	max-height: calc(100vh - 16px);
+	overflow: auto;
+}
+.flex-split-screen-drag-box-title-more-menu {
+	display: flex;
+	flex-direction: column;
+	min-width: 190px;
+	padding: 0.35rem;
+	border: 1px solid #00000024;
+	border-radius: 0.5rem;
+	background: #ffffff;
+	box-shadow: 0 8px 24px #0000002e;
+
+	html[data-color-scheme="dark"] & {
+		color: #f5f5f5;
+		background: #333333;
+		border-color: #ffffff24;
+		box-shadow: 0 8px 24px #00000070;
+	}
+
+	& button {
+		width: 100%;
+		padding: 0.55rem 0.7rem;
+		border: none;
+		border-radius: 0.35rem;
+		background: transparent;
+		color: inherit;
+		text-align: left;
+		font: inherit;
+		cursor: pointer;
+
+		&:hover:not(:disabled),
+		&:focus-visible:not(:disabled) {
+			background: #0000000f;
+			outline: none;
+
+			html[data-color-scheme="dark"] & {
+				background: #ffffff14;
+			}
+		}
+
+		&:disabled {
+			opacity: 0.4;
+			cursor: default;
+		}
+	}
+}
+.flex-split-screen-drag-box-title-more-menu-divider {
+	height: 1px;
+	margin: 0.3rem 0.25rem;
+	background: #0000001f;
+
+	html[data-color-scheme="dark"] & {
+		background: #ffffff1f;
+	}
+}
+
 .flex-split-screen-drag-box {
 	align-self: center;
 	-webkit-touch-callout: none; /* iOS */

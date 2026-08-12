@@ -408,7 +408,8 @@ const containers = useContainers(layoutName);
 
 ## Split Screen
 
-Split Screen은 “드래그로 화면을 좌/우/상/하/중앙에 드롭 → 해당 위치에 새 화면을 동적으로 분할 생성”하는 패턴을 제공합니다.  
+Split Screen은 “드래그로 화면을 좌/우/상/하/중앙에 드롭 → 해당 위치에 새 화면을 동적으로 분할 생성”하는 패턴을 제공합니다. 같은 center 영역에 여러 화면이 들어오면 탭처럼 관리되며, 탭 타이틀은 드래그해서 순서를 바꿀 수 있습니다.
+
 ⚠️ 주의: `FlexLayoutSplitScreen`은 실제 사용 환경에서의 안정성을 충분히 검증하지 않았습니다. 의도한 대로 동작하지 않을 수도 있습니다.
 
 ### 1) FlexLayoutSplitScreen (스플릿 루트)
@@ -437,12 +438,147 @@ export default function Page() {
 **Props (요약)**
 
 - `layoutName: string`: 스플릿 화면 트리의 루트 키
-- `containerName: string`: 이 화면(컨테이너)의 키
-- `children: ReactNode`
-- `navigationTitle?: string`: 탭/내비게이션용 타이틀
-- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`  
-  드롭을 “화면 밖”으로 했을 때 새 창/문서로 열기 옵션
-- `screenKey?: string`: `FlexLayoutSplitScreen` 내부에서 screen을 판별할 때 사용하는 유니크한 값입니다. 빈 값이면 기본값으로 32자리 랜덤 값을 생성합니다. 개발자가 제어할 수 없는 동적 분할 화면 뷰라면 가급적 빈 값으로 이용하는 것을 권장합니다.
+- `containerName: string`: 최초 center 화면의 키
+- `children: ReactElement`: 최초 center에 렌더링할 화면
+- `navigationTitle: string`: 최초 화면의 탭/내비게이션 라벨
+- `navigationTitleComponent?: ReactElement<{ children?: ReactNode }>`: 각 탭의 `navigationTitle` 문자열을 렌더링할 때 사용하는 공통 래퍼 컴포넌트
+- `dropGuideComponent?: ReactNode`: 드래그 중 분할 가능한 영역에 표시할 안내 UI. 생략하면 기본 안내 문구를 사용
+- `titleMoreButtonComponent?: ReactNode`: 타이틀 영역 오른쪽의 More 트리거 UI. `undefined`면 기본 `...`, `null`이면 More 기능을 숨김
+- `renderTitleMoreMenu?: (context) => ReactNode`: 기본 More 메뉴 전체를 교체하는 renderer
+- `renderTitleMoreMenuItems?: (context) => ReactNode`: 기본 More 메뉴 아래에 사용자 메뉴 항목을 추가하는 renderer
+- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`: 문서 바깥 drop 및 “새 창에서 열기”에 사용할 URL/창 옵션
+- `screenKey?: string`: 화면 식별 key. 생략하면 내부에서 생성
+- `isResetOnChildrenChange?: boolean`: `children` 변경 시 split store를 reset할지 여부. 기본값 `true`
+- `isRemoveStoreOnUnmount?: boolean`: 언마운트 시 root split screen store를 삭제할지 여부. 기본값 `true`
+
+### 2) `navigationTitle`과 `navigationTitleComponent`의 역할
+
+`navigationTitle`은 **화면의 라벨 데이터**이고, `navigationTitleComponent`는 그 라벨을 Split Screen이 실제 타이틀 UI로 렌더링할 때 사용하는 **공통 래퍼**입니다.
+
+`FlexLayoutSplitScreenDragBox`는 `navigationTitle` 문자열만 전달합니다. `navigationTitleComponent`를 DragBox가 들고 이동하지 않으므로, 다른 Split Screen으로 이동한 화면의 타이틀은 **도착한 Split Screen의 `navigationTitleComponent` 디자인**을 따릅니다.
+
+```tsx
+import type { ReactNode } from "react";
+import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
+
+function SplitScreenTitle({ children }: { children?: ReactNode }) {
+	return <strong className="split-screen-title">{children}</strong>;
+}
+
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="대시보드"
+	navigationTitleComponent={<SplitScreenTitle />}
+>
+	<div>대시보드 콘텐츠</div>
+</FlexLayoutSplitScreen>;
+```
+
+위 예제에서 최초 화면은 개념적으로 `<SplitScreenTitle>대시보드</SplitScreenTitle>`처럼 렌더링됩니다. 이후 DragBox에서 `navigationTitle="사용자 목록"`을 가진 화면이 들어오면 동일한 래퍼로 `사용자 목록`이 렌더링됩니다.
+
+### 3) 분할 안내 UI 커스터마이징
+
+드래그 중 Split Screen의 실제 분할 drop 영역에는 기본적으로 `⬇️드롭하면 화면이 분할됩니다.` 안내가 표시됩니다. `dropGuideComponent`를 전달하면 이 UI만 교체할 수 있습니다.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="대시보드"
+	dropGuideComponent={<div>여기에 놓아 새 화면을 만듭니다.</div>}
+>
+	<div>대시보드 콘텐츠</div>
+</FlexLayoutSplitScreen>
+```
+
+타이틀 영역은 탭 순서 변경을 위한 drop 영역으로 별도 처리되므로, 타이틀끼리 순서를 바꾸는 동안에는 분할 안내 UI가 표시되지 않습니다.
+
+### 4) 탭 타이틀 순서 변경
+
+같은 Split Screen의 center 탭들은 타이틀 자체를 드래그해서 순서를 변경할 수 있습니다.
+
+- 대상 타이틀의 **왼쪽 절반**에 drop → 대상 앞에 이동
+- 대상 타이틀의 **오른쪽 절반**에 drop → 대상 뒤에 이동
+- 다른 탭이 앞뒤로 이동해도 활성 탭은 `screenKey` 기준으로 유지
+- 타이틀 영역 밖의 실제 Split Screen 영역으로 끌면 기존 화면 분할 Drag & Drop 동작을 계속 사용
+
+### 5) 기본 More 메뉴
+
+타이틀 영역 오른쪽의 기본 `...` 버튼은 현재 활성 탭을 기준으로 아래 기능을 제공합니다.
+
+1. 현재 탭 닫기
+2. 다른 탭 모두 닫기
+3. 오른쪽 탭 모두 닫기
+4. 현재 분할의 탭 모두 닫기
+5. `dropDocumentOutsideOption.openUrl`이 있는 경우 새 창에서 열기
+
+More 메뉴는 React Portal로 `document.body`에 렌더링되므로 Split Screen 내부의 `overflow`에 잘리지 않습니다. 트리거 위치와 메뉴 실제 크기를 기준으로 viewport 안에 배치하고, scroll/resize 시 위치를 다시 계산합니다. 바깥 클릭 또는 `Escape`로 닫을 수 있습니다.
+
+### 6) More 트리거 / 메뉴 확장
+
+`titleMoreButtonComponent`, `renderTitleMoreMenuItems`, `renderTitleMoreMenu`는 서로 다른 범위를 커스터마이징합니다.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="대시보드"
+	titleMoreButtonComponent={<button type="button">메뉴</button>}
+	renderTitleMoreMenuItems={(context) => (
+		<button
+			type="button"
+			onClick={() => {
+				console.log(context.activeItem);
+				context.closeMenu();
+			}}
+		>
+			사용자 기능
+		</button>
+	)}
+>
+	<div>대시보드 콘텐츠</div>
+</FlexLayoutSplitScreen>
+```
+
+- `titleMoreButtonComponent`: `...` 트리거 부분만 교체
+- `renderTitleMoreMenuItems`: 라이브러리의 기본 5개 기능을 유지하면서 메뉴 항목 추가
+- `renderTitleMoreMenu`: 기본 메뉴 내용을 전부 교체. Portal/위치 계산/바깥 클릭/ESC 닫기 같은 메뉴 컨테이너 동작은 그대로 사용
+
+`renderTitleMoreMenu` / `renderTitleMoreMenuItems`의 context에는 다음 값과 액션이 전달됩니다.
+
+- 식별 정보: `rootName`, `layoutName`, `containerName`, `screenKey`
+- 활성 탭: `activeItem`, `activeIndex`
+- 전체 center 탭: `items`
+- 메뉴 제어: `closeMenu()`
+- 기본 액션: `closeCurrentTab()`, `closeOtherTabs()`, `closeTabsToRight()`, `closeAllTabs()`, `openInNewWindow()`
+- 활성화 여부: `canCloseOtherTabs`, `canCloseTabsToRight`, `canOpenInNewWindow`
+
+기본 메뉴 전체를 교체하려면 다음처럼 사용할 수 있습니다.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="대시보드"
+	renderTitleMoreMenu={(context) => (
+		<div role="menu">
+			<button type="button" onClick={context.closeCurrentTab}>
+				현재 화면 닫기
+			</button>
+			<button type="button" onClick={context.closeMenu}>
+				메뉴 닫기
+			</button>
+		</div>
+	)}
+>
+	<div>대시보드 콘텐츠</div>
+</FlexLayoutSplitScreen>
+```
+
+### 7) 드래그 취소
+
+`FlexLayoutSplitScreenDragBox`로 드래그하는 중 `Escape`를 누르면 현재 drag를 취소합니다. drag clone과 예약된 drag state를 정리하고 `isDragging: false`, `isDrop: false` 상태를 전파하므로, Split Screen에 표시되던 분할 안내 UI도 즉시 사라지고 이후 mouse/touch 종료 시 drop이 실행되지 않습니다.
 
 ---
 
@@ -476,10 +612,12 @@ import { FlexLayoutSplitScreenDragBox } from "@byeolnaerim/flex-layout";
 - `url?: string`: `iframe` 또는 Next.js 전용 DragBox가 렌더링할 URL
 - `iframe?: boolean`: URL을 iframe으로 렌더링할지 여부. 기본값 `false`
 - `iframeProps?: IframeHTMLAttributes<HTMLIFrameElement>`: iframe 속성과 스타일
-- `navigationTitle?: string`
-- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number }`
-- `customData?: any`: 드롭 시 함께 전달할 임의 데이터
+- `navigationTitle?: string`: drop 후 화면의 라벨 데이터. 타이틀 렌더 스타일은 DragBox가 아니라 drop 대상 `FlexLayoutSplitScreen.navigationTitleComponent`가 담당
+- `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`
+- `customData?: Record<string, string | number | boolean | undefined>`: 드롭 시 함께 전달할 커스텀 데이터
 - `scrollTargetRef?: RefObject<HTMLElement>`: 드래그 중 스크롤 타겟(옵션)
+
+드래그 도중 `Escape`를 누르면 현재 drag가 취소되며 drop callback이나 화면 분할이 실행되지 않습니다.
 
 ---
 

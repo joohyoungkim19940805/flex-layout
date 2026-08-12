@@ -7,6 +7,11 @@ export { FlexLayoutIFramePane } from "./FlexLayoutIFramePane";
 export type { FlexLayoutIFramePaneProps } from "./FlexLayoutIFramePane";
 export { default as FlexLayoutResizePanel } from "./FlexLayoutResizePanel";
 export { default as FlexLayoutSplitScreen } from "./FlexLayoutSplitScreen";
+export type { FlexLayoutSplitScreenProps } from "./FlexLayoutSplitScreen";
+export type {
+	FlexLayoutSplitScreenTitleMoreMenuContext,
+	FlexLayoutSplitScreenTitleMoreRenderer,
+} from "./FlexLayoutSplitScreenDragBoxTitleMore";
 export { default as FlexLayoutSplitScreenDragBox } from "./FlexLayoutSplitScreenDragBox";
 export type {
 	DropDocumentOutsideOption,
