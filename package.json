@@ -113,8 +113,7 @@
 		"build": "tsup && tsc -p tsconfig.build.json && npm run copy:assets",
 		"copy:assets": "cpy \"src/**/*.css\" \"dist\"",
 		"dev": "tsup --watch",
-		"prepack": "npm run build",
-		"prepare": "npm run build"
+		"prepack": "npm run build"
 	},
 	"peerDependencies": {
 		"react": ">=18 <20",
