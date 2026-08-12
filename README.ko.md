@@ -442,14 +442,17 @@ export default function Page() {
 - `children: ReactElement`: 최초 center에 렌더링할 화면
 - `navigationTitle: string`: 최초 화면의 탭/내비게이션 라벨
 - `navigationTitleComponent?: ReactElement<{ children?: ReactNode }>`: 각 탭의 `navigationTitle` 문자열을 렌더링할 때 사용하는 공통 래퍼 컴포넌트
+- `titleWrapperComponent?: ReactElement<{ children?: ReactNode }>`: 타이틀 내용과 닫기 버튼을 감싸는 공통 래퍼. 바깥 Drag & Drop 루트는 교체하지 않음
 - `dropGuideComponent?: ReactNode`: 드래그 중 분할 가능한 영역에 표시할 안내 UI. 생략하면 기본 안내 문구를 사용
+- `titleCloseButtonComponent?: ReactNode`: 탭 닫기 UI. `undefined`면 기본 `X`, `null`이면 닫기 버튼을 숨김
 - `titleMoreButtonComponent?: ReactNode`: 타이틀 영역 오른쪽의 More 트리거 UI. `undefined`면 기본 `...`, `null`이면 More 기능을 숨김
 - `renderTitleMoreMenu?: (context) => ReactNode`: 기본 More 메뉴 전체를 교체하는 renderer
 - `renderTitleMoreMenuItems?: (context) => ReactNode`: 기본 More 메뉴 아래에 사용자 메뉴 항목을 추가하는 renderer
 - `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`: 문서 바깥 drop 및 “새 창에서 열기”에 사용할 URL/창 옵션
 - `screenKey?: string`: 화면 식별 key. 생략하면 내부에서 생성
-- `isResetOnChildrenChange?: boolean`: `children` 변경 시 split store를 reset할지 여부. 기본값 `true`
-- `isRemoveStoreOnUnmount?: boolean`: 언마운트 시 root split screen store를 삭제할지 여부. 기본값 `true`
+- `preserveStateOnUnmount?: boolean`: 언마운트 시 현재 root split screen의 **in-memory** store를 유지할지 여부. 기본값 `false`. 브라우저 새로고침 persistence와는 별개
+- `isResetOnChildrenChange?: boolean`: **deprecated**. 더 이상 런타임에서 사용되지 않으며 추후 제거 예정. `children`은 현재 split 구조를 reset하지 않고 항상 갱신됨
+- `isRemoveStoreOnUnmount?: boolean`: **deprecated**. `preserveStateOnUnmount`를 사용하세요. 호환을 위해 `false`는 `preserveStateOnUnmount={true}`, `true`는 `preserveStateOnUnmount={false}`로 해석되며 새 prop이 우선함
 
 ### 2) `navigationTitle`과 `navigationTitleComponent`의 역할
 
@@ -477,7 +480,30 @@ function SplitScreenTitle({ children }: { children?: ReactNode }) {
 
 위 예제에서 최초 화면은 개념적으로 `<SplitScreenTitle>대시보드</SplitScreenTitle>`처럼 렌더링됩니다. 이후 DragBox에서 `navigationTitle="사용자 목록"`을 가진 화면이 들어오면 동일한 래퍼로 `사용자 목록`이 렌더링됩니다.
 
-### 3) 분할 안내 UI 커스터마이징
+### 3) 타이틀 래퍼 / 닫기 버튼 커스터마이징
+
+`titleWrapperComponent`는 각 탭의 **타이틀 내용 + 닫기 버튼**만 감쌉니다. Drag & Drop을 담당하는 바깥 타이틀 루트는 그대로 유지되므로, 래퍼를 바꿔도 탭 이동/순서 변경 동작은 유지됩니다.
+
+`titleCloseButtonComponent`는 닫기 버튼의 UI만 교체합니다. 클릭에 따른 탭 닫기 동작은 라이브러리가 처리합니다.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="대시보드"
+	titleWrapperComponent={<div className="split-screen-title-wrapper" />}
+	titleCloseButtonComponent={<span aria-hidden>×</span>}
+>
+	<div>대시보드 콘텐츠</div>
+</FlexLayoutSplitScreen>
+```
+
+- `titleWrapperComponent` 생략: 별도 래퍼 DOM을 추가하지 않음
+- `titleCloseButtonComponent === undefined`: 기본 `X` 버튼 사용
+- `titleCloseButtonComponent === null`: 닫기 버튼 숨김
+- 사용자 컴포넌트를 전달하면 해당 UI를 사용하되 실제 close 동작은 Split Screen이 처리
+
+### 4) 분할 안내 UI 커스터마이징
 
 드래그 중 Split Screen의 실제 분할 drop 영역에는 기본적으로 `⬇️드롭하면 화면이 분할됩니다.` 안내가 표시됩니다. `dropGuideComponent`를 전달하면 이 UI만 교체할 수 있습니다.
 
@@ -494,7 +520,7 @@ function SplitScreenTitle({ children }: { children?: ReactNode }) {
 
 타이틀 영역은 탭 순서 변경을 위한 drop 영역으로 별도 처리되므로, 타이틀끼리 순서를 바꾸는 동안에는 분할 안내 UI가 표시되지 않습니다.
 
-### 4) 탭 타이틀 순서 변경
+### 5) 탭 타이틀 순서 변경
 
 같은 Split Screen의 center 탭들은 타이틀 자체를 드래그해서 순서를 변경할 수 있습니다.
 
@@ -503,7 +529,7 @@ function SplitScreenTitle({ children }: { children?: ReactNode }) {
 - 다른 탭이 앞뒤로 이동해도 활성 탭은 `screenKey` 기준으로 유지
 - 타이틀 영역 밖의 실제 Split Screen 영역으로 끌면 기존 화면 분할 Drag & Drop 동작을 계속 사용
 
-### 5) 기본 More 메뉴
+### 6) 기본 More 메뉴
 
 타이틀 영역 오른쪽의 기본 `...` 버튼은 현재 활성 탭을 기준으로 아래 기능을 제공합니다.
 
@@ -515,7 +541,7 @@ function SplitScreenTitle({ children }: { children?: ReactNode }) {
 
 More 메뉴는 React Portal로 `document.body`에 렌더링되므로 Split Screen 내부의 `overflow`에 잘리지 않습니다. 트리거 위치와 메뉴 실제 크기를 기준으로 viewport 안에 배치하고, scroll/resize 시 위치를 다시 계산합니다. 바깥 클릭 또는 `Escape`로 닫을 수 있습니다.
 
-### 6) More 트리거 / 메뉴 확장
+### 7) More 트리거 / 메뉴 확장
 
 `titleMoreButtonComponent`, `renderTitleMoreMenuItems`, `renderTitleMoreMenu`는 서로 다른 범위를 커스터마이징합니다.
 
@@ -576,7 +602,11 @@ More 메뉴는 React Portal로 `document.body`에 렌더링되므로 Split Scree
 </FlexLayoutSplitScreen>
 ```
 
-### 7) 드래그 취소
+#### 전체 디자인 커스터마이징 예제
+
+실제 사이트에서 사용하는 `FlexLayoutSplitScreen` 디자인 커스터마이징 코드를 통째로 보고 싶다면 [`README.splitScreenCustomizeStyle.md`](./README.splitScreenCustomizeStyle.md)를 참고하세요. `navigationTitleComponent`, `titleWrapperComponent`, `dropGuideComponent`, `titleCloseButtonComponent`, `titleMoreButtonComponent`, `renderTitleMoreMenu`를 한 번에 적용한 예제입니다.
+
+### 8) 드래그 취소
 
 `FlexLayoutSplitScreenDragBox`로 드래그하는 중 `Escape`를 누르면 현재 drag를 취소합니다. drag clone과 예약된 drag state를 정리하고 `isDragging: false`, `isDrop: false` 상태를 전파하므로, Split Screen에 표시되던 분할 안내 UI도 즉시 사라지고 이후 mouse/touch 종료 시 drop이 실행되지 않습니다.
 
@@ -629,6 +659,7 @@ Next.js 전용 진입점은 드롭 대상 컴포넌트를 직접 작성하지 �
 - 드롭된 URL에 해당하는 `page.tsx`만 서버에서 동적으로 import합니다.
 - 생성된 정적 import registry를 사용하므로 Turbopack이 import 대상을 빌드 시점에 확인할 수 있습니다.
 - 기본 렌더 방식은 RSC이며 `iframe`은 기본값이 `false`입니다.
+- 생성되는 `FlexLayoutNextSplitScreen`은 URL 기반 RSC 렌더링의 wrapper이면서, 선택적으로 브라우저 reload/history 복원 persistence 경계 역할도 합니다.
 
 ### 1. Registry 생성 스크립트
 
@@ -672,7 +703,7 @@ registryConfigs.forEach((config) => {
 ```ts
 pageRegistry
 resolvePage
-FlexLayoutNextProvider
+FlexLayoutNextSplitScreen
 ```
 
 주요 생성 옵션:
@@ -684,24 +715,26 @@ FlexLayoutNextProvider
 - `includeLayouts`: 중첩 `layout.tsx`도 조합할지 여부. 기본값 `false`
 - `excludeRootLayout`: `app/layout.tsx` 제외 여부. 기본값 `true`
 - `excludedLayouts`: `appDir` 기준 확장자 없는 layout 경로 목록
-- `providerId`: 동일한 페이지 트리에 registry Provider를 여러 개 둘 때만 직접 지정
+- `providerId`: 동일한 페이지 트리에 registry wrapper를 여러 개 둘 때만 직접 지정
 - `cookieOptions`: Server Action render request cookie의 `path`, `domain`, `httpOnly`, `secure`, `sameSite`, `maxAge` 설정
 
 `includeLayouts`는 기본적으로 꺼져 있습니다. 일반적으로 root 또는 상위 layout에는 Header, Sidebar, Provider, FlexLayout shell이 포함되므로 pane 내부에서 다시 조합하면 UI가 중복되거나 재귀 구조가 생길 수 있습니다. 필요한 하위 layout만 명확한 경우에만 활성화하세요.
 
-### 2. 생성된 Provider를 한 번 적용
+생성된 `FlexLayoutNextSplitScreen`은 사용 시점에 `persistence` prop을 받을 수 있으므로, 브라우저 persistence 설정을 generator config에 고정할 필요는 없습니다.
 
-`FlexLayoutNextProvider`는 일반 `FlexLayout` 전체에 필요한 Provider가 아닙니다. **URL 기반 서버 렌더링 결과가 들어갈 `FlexLayoutSplitScreen` 트리**를 한 번 감싸면 됩니다. DragBox는 다른 위치에 있어도 drop 후 생성된 pane이 이 Provider 아래에 렌더링되면 됩니다.
+### 2. 생성된 FlexLayoutNextSplitScreen 적용
+
+`FlexLayoutNextSplitScreen`은 일반 `FlexLayout` 전체에 필요한 Provider가 아닙니다. **URL 기반 서버 렌더링 결과가 들어갈 `FlexLayoutSplitScreen` 트리**를 감싸는 Next.js 전용 wrapper입니다.
 
 ```tsx
 // app/layout.tsx 또는 FlexLayoutSplitScreen을 렌더링하는 공통 Server Layout
-import FlexLayoutNextProvider from "@/generated/flexLayoutPageRegistry";
+import FlexLayoutNextSplitScreen from "@/generated/flexLayoutPageRegistry";
 import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
 import type { ReactNode } from "react";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
-		<FlexLayoutNextProvider>
+		<FlexLayoutNextSplitScreen>
 			<FlexLayoutSplitScreen
 				layoutName="root-split-screen"
 				containerName="main-split-screen"
@@ -709,14 +742,76 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 			>
 				{children}
 			</FlexLayoutSplitScreen>
-		</FlexLayoutNextProvider>
+		</FlexLayoutNextSplitScreen>
 	);
 }
 ```
 
-Provider는 드롭 시 전달된 URL을 짧은 수명의 HTTP-only cookie에 기록하는 Server Action을 내부적으로 호출합니다. cookie 변경으로 현재 RSC 트리가 다시 렌더링되면 생성된 registry가 URL을 해석하고, 해당 `page.tsx`의 서버 렌더 결과를 기존 `FlexLayoutSplitScreen` pane에 병합합니다.
+wrapper는 드롭 시 전달된 URL을 짧은 수명의 HTTP-only cookie에 기록하는 Server Action을 내부적으로 호출합니다. cookie 변경으로 현재 RSC 트리가 다시 렌더링되면 생성된 registry가 URL을 해석하고, 해당 `page.tsx`의 서버 렌더 결과를 기존 `FlexLayoutSplitScreen` pane에 병합합니다.
 
-### 3. DragBox에는 URL만 전달
+### 3. 브라우저 reload / URL별 Split Screen 복원
+
+`persistence`를 전달하면 Next URL pane의 split 구조를 `@byeolnaerim/global-rx-state` storage에 직렬화해서 저장하고 복원할 수 있습니다.
+
+```tsx
+<FlexLayoutNextSplitScreen
+	persistence={{
+		storage: "auto",
+		keyName:"byeolnaerim-docs-split-screen-v6",
+		restoreOnReload: true,
+		syncWithBrowserUrl: true,
+	}}
+>
+	<FlexLayoutSplitScreen
+		layoutName="root-split-screen"
+		containerName="main-split-screen"
+		navigationTitle="ROOT"
+	>
+		{children}
+	</FlexLayoutSplitScreen>
+</FlexLayoutNextSplitScreen>
+```
+
+`persistence` 옵션:
+
+- `storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"` _(필수)_: persistence backend. `"in-memory"`는 지원하지 않음
+- `keyName?: string`: global-rx-state persistence key. 기본값은 `__flexLayoutNextSplitScreen:${providerId}`
+- `name?: string`, `storeName?: string`, `keyPrefix?: string`: storage 세부 옵션
+- `restoreOnReload?: boolean`: reload 후 복원 여부. 기본값 `true`. `false`이면 해당 wrapper의 Split Screen persistence 자체가 비활성화됨
+- `syncWithBrowserUrl?: boolean`: 브라우저 URL별 snapshot을 사용할지 여부. 기본값 `false`
+
+복원 가능한 pane은 아래 조건을 모두 만족해야 합니다.
+
+- `FlexLayoutNextSplitScreen` wrapper 아래의 `FlexLayoutSplitScreen`에 속함
+- Next 전용 `FlexLayoutSplitScreenDragBox`를 사용함
+- `url`이 지정됨
+- `targetComponent`를 직접 지정하지 않음
+- `iframe !== true`
+- `persistence`가 활성화되어 있음
+
+persistent snapshot에는 ReactElement, 함수, ref 같은 런타임 객체를 저장하지 않습니다. URL pane의 split topology/order/direction, `screenKey`, `containerName`, `navigationTitle`, URL, document-outside 옵션처럼 복원 가능한 데이터만 저장합니다.
+
+`targetComponent`를 직접 전달한 pane과 iframe pane은 런타임에서는 정상적으로 분할/이동할 수 있지만 persistent snapshot에서는 제외됩니다. 따라서 reload 또는 URL snapshot 복원 후에는 해당 pane이 사라집니다. 그 아래에 있던 복원 가능한 URL pane은 가능한 경우 root center tab으로 승격되어 유지됩니다.
+
+root 화면의 ReactElement 자체도 저장하지 않습니다. 복원 시에는 **현재 route에서 렌더링된 root `children`**을 사용하고, 저장된 root `screenKey`와 split 구조만 다시 연결합니다.
+
+#### `syncWithBrowserUrl: false`
+
+하나의 최신 workspace snapshot을 유지합니다.
+
+- route가 바뀌어도 현재 split workspace를 계속 사용
+- full reload 시 마지막으로 저장된 URL 기반 split workspace를 복원
+
+#### `syncWithBrowserUrl: true`
+
+`pathname + search`를 key로 URL별 snapshot을 유지합니다.
+
+- 이미 snapshot이 있는 URL로 이동하거나 back/forward하면 해당 URL의 전체 URL 기반 split workspace를 복원
+- 처음 방문하는 URL이면 현재 workspace를 그대로 이어받아 그 URL의 최초 snapshot으로 저장
+- hash는 URL key에 포함하지 않음
+- 같은 URL이 browser history에 여러 번 있어도 history entry별 상태가 아니라 **URL별 최신 snapshot**을 사용
+
+### 4. DragBox에는 URL만 전달
 
 Next 전용 진입점에서 `FlexLayoutSplitScreenDragBox`를 import합니다.
 
@@ -744,9 +839,9 @@ export function MenuItem({ url, title }: { url: string; title: string }) {
 }
 ```
 
-`targetComponent`를 직접 전달하면 URL 자동 렌더보다 우선합니다.
+`targetComponent`를 직접 전달하면 URL 자동 렌더보다 우선합니다. 이 경우 pane은 runtime split에는 참여하지만 위 persistence 복원 대상에서는 제외됩니다.
 
-### 4. iframe 렌더링
+### 5. iframe 렌더링
 
 `iframe`은 명시적으로 `true`를 전달한 경우에만 사용합니다. 기본값은 `false`입니다.
 
@@ -766,7 +861,7 @@ export function MenuItem({ url, title }: { url: string; title: string }) {
 </FlexLayoutSplitScreenDragBox>
 ```
 
-iframe은 리사이즈 또는 드래그 중 pointer event를 자동으로 차단하며, `iframeProps`로 일반 iframe 속성과 스타일을 재정의할 수 있습니다. iframe 모드에서는 RSC 서버 렌더링을 사용하지 않으므로 `FlexLayoutNextProvider`가 필요하지 않습니다.
+iframe은 리사이즈 또는 드래그 중 pointer event를 자동으로 차단하며, `iframeProps`로 일반 iframe 속성과 스타일을 재정의할 수 있습니다. iframe 모드는 RSC 서버 렌더링과 Split Screen persistence 복원을 사용하지 않으므로 해당 pane 자체에는 `FlexLayoutNextSplitScreen` wrapper가 필요하지 않습니다.
 
 ### 동작 범위와 제약
 
@@ -776,9 +871,9 @@ iframe은 리사이즈 또는 드래그 중 pointer event를 자동으로 차단
 - pane은 별도의 Next Router가 아닙니다. page 내부 Client Component의 `usePathname()`, `useParams()`, `useSearchParams()`는 pane URL이 아니라 실제 브라우저 URL을 기준으로 동작합니다.
 - page 내부의 `redirect()`와 `notFound()`는 독립 pane navigation이 아니라 현재 Next route 렌더에 영향을 줄 수 있습니다.
 - `loading.tsx`, `error.tsx`, `not-found.tsx`, metadata는 registry가 자동 조합하지 않습니다.
-- page의 `dynamic`, `revalidate`, `runtime`, `preferredRegion` 같은 route segment config는 pane에 독립적으로 적용되지 않고 Provider가 속한 route의 runtime/cache 정책을 따릅니다.
-- Provider가 `cookies()`를 읽으므로 Provider가 포함된 route tree는 동적 렌더링 대상이 됩니다.
-- Server Action이 필요하므로 `output: "export"`인 정적 export에서는 사용할 수 없습니다. 이 경우 `iframe` 또는 직접 전달한 `targetComponent`를 사용해야 합니다.
+- page의 `dynamic`, `revalidate`, `runtime`, `preferredRegion` 같은 route segment config는 pane에 독립적으로 적용되지 않고 wrapper가 속한 route의 runtime/cache 정책을 따릅니다.
+- `FlexLayoutNextSplitScreen`이 `cookies()`를 읽으므로 wrapper가 포함된 route tree는 동적 렌더링 대상이 됩니다.
+- Server Action이 필요하므로 `output: "export"`인 정적 export에서는 URL 기반 RSC 렌더링을 사용할 수 없습니다. 이 경우 `iframe` 또는 직접 전달한 `targetComponent`를 사용해야 합니다.
 
 ---
 

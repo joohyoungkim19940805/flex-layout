@@ -443,14 +443,17 @@ export default function Page() {
 - `children: ReactElement`: screen rendered in the initial center
 - `navigationTitle: string`: label of the initial screen in the tab/navigation area
 - `navigationTitleComponent?: ReactElement<{ children?: ReactNode }>`: shared wrapper used when each tab's `navigationTitle` string is rendered
+- `titleWrapperComponent?: ReactElement<{ children?: ReactNode }>`: shared wrapper around the rendered title content and close button. It does not replace the outer Drag & Drop root
 - `dropGuideComponent?: ReactNode`: guide UI shown over an available split-drop area while dragging. Uses the default guide when omitted
+- `titleCloseButtonComponent?: ReactNode`: tab close UI. `undefined` uses the default `X`; `null` hides the close button
 - `titleMoreButtonComponent?: ReactNode`: More trigger at the right side of the title area. `undefined` uses the default `...`; `null` hides More
 - `renderTitleMoreMenu?: (context) => ReactNode`: replaces the complete default More menu content
 - `renderTitleMoreMenuItems?: (context) => ReactNode`: appends consumer-defined items after the default More menu items
 - `dropDocumentOutsideOption?: { openUrl: string; widthRatio?: number; heightRatio?: number; isNewTap?: boolean }`: URL/window options used for document-outside drop and “Open in new window”
 - `screenKey?: string`: screen identity key. Generated internally when omitted
-- `isResetOnChildrenChange?: boolean`: whether to reset the split store when `children` changes. Defaults to `true`
-- `isRemoveStoreOnUnmount?: boolean`: whether to remove the root split-screen store on unmount. Defaults to `true`
+- `preserveStateOnUnmount?: boolean`: keep the current root split-screen **in-memory** store when the component unmounts. Defaults to `false`. This is separate from browser-reload persistence
+- `isResetOnChildrenChange?: boolean`: **deprecated**. It is no longer used at runtime and will be removed. `children` is always refreshed without resetting the current split structure
+- `isRemoveStoreOnUnmount?: boolean`: **deprecated**. Use `preserveStateOnUnmount`. For compatibility, `false` maps to `preserveStateOnUnmount={true}` and `true` maps to `preserveStateOnUnmount={false}`; the new prop takes precedence
 
 ### 2) Roles of `navigationTitle` and `navigationTitleComponent`
 
@@ -478,7 +481,30 @@ function SplitScreenTitle({ children }: { children?: ReactNode }) {
 
 Conceptually, the initial title above is rendered as `<SplitScreenTitle>Dashboard</SplitScreenTitle>`. If a DragBox with `navigationTitle="Users"` is later dropped into the same Split Screen, `Users` is rendered through the same wrapper.
 
-### 3) Customize the split-drop guide
+### 3) Customize the title wrapper / close button
+
+`titleWrapperComponent` wraps only the **rendered title content + close button** for each tab. The outer title root that owns Drag & Drop remains unchanged, so tab movement and title reordering continue to work when a custom wrapper is used.
+
+`titleCloseButtonComponent` replaces only the close-button UI. Split Screen still owns the click handling that closes the tab.
+
+```tsx
+<FlexLayoutSplitScreen
+	layoutName="rootSplitScreen"
+	containerName="dashboard"
+	navigationTitle="Dashboard"
+	titleWrapperComponent={<div className="split-screen-title-wrapper" />}
+	titleCloseButtonComponent={<span aria-hidden>×</span>}
+>
+	<div>Dashboard content</div>
+</FlexLayoutSplitScreen>
+```
+
+- omit `titleWrapperComponent`: no extra wrapper DOM is added
+- `titleCloseButtonComponent === undefined`: use the default `X` button
+- `titleCloseButtonComponent === null`: hide the close button
+- pass a custom component to replace the UI while keeping the library-managed close behavior
+
+### 4) Customize the split-drop guide
 
 While dragging over an actual split-drop area, Split Screen shows the default `⬇️드롭하면 화면이 분할됩니다.` guide. Pass `dropGuideComponent` to replace only that UI.
 
@@ -495,7 +521,7 @@ While dragging over an actual split-drop area, Split Screen shows the default `�
 
 The title area is handled separately as the tab-reorder drop zone, so the split guide is not shown while reordering titles.
 
-### 4) Reorder tab titles
+### 5) Reorder tab titles
 
 Center tabs in the same Split Screen can be reordered by dragging their titles.
 
@@ -504,7 +530,7 @@ Center tabs in the same Split Screen can be reordered by dragging their titles.
 - The active tab is preserved by `screenKey` even when other tabs move around it
 - Dragging out of the title area and into an actual Split Screen drop region continues to use the existing screen-splitting drag behavior
 
-### 5) Default More menu
+### 6) Default More menu
 
 The default `...` button at the right side of the title area provides these actions for the active tab:
 
@@ -516,7 +542,7 @@ The default `...` button at the right side of the title area provides these acti
 
 The More menu is rendered into `document.body` with a React Portal, so it is not clipped by Split Screen overflow. Its position is calculated from the trigger rectangle and actual menu size, clamped to the viewport, and recalculated on scroll/resize. Outside pointer down or `Escape` closes it.
 
-### 6) Extend the More trigger and menu
+### 7) Extend the More trigger and menu
 
 `titleMoreButtonComponent`, `renderTitleMoreMenuItems`, and `renderTitleMoreMenu` customize different layers.
 
@@ -577,7 +603,13 @@ To replace the whole menu content:
 </FlexLayoutSplitScreen>
 ```
 
-### 7) Cancel an active drag
+#### Complete design customization example
+
+For the complete `FlexLayoutSplitScreen` styling used by the site, see [`README.splitScreenCustomizeStyle.md`](./README.splitScreenCustomizeStyle.md). It shows `navigationTitleComponent`, `titleWrapperComponent`, `dropGuideComponent`, `titleCloseButtonComponent`, `titleMoreButtonComponent`, and `renderTitleMoreMenu` working together.
+
+The example intentionally contains the actual site code, including MUI, MUI Icons, and site-specific i18n/theme utilities that are **not** dependencies of `@byeolnaerim/flex-layout`. It is documentation-only code and is not compiled into the library build/`dist`. Copy only the parts you need and adapt them to your project.
+
+### 8) Cancel an active drag
 
 Press `Escape` while dragging a `FlexLayoutSplitScreenDragBox` to cancel the current drag. The drag clone and pending drag state are cleared, `isDragging: false` / `isDrop: false` is emitted, the split-drop guide disappears immediately, and the following mouse/touch end does not perform a drop.
 
@@ -630,6 +662,7 @@ The Next.js entry renders an `app/**/page.tsx` inside a split pane **from only i
 - Only the `page.tsx` selected by the dropped URL is dynamically imported on the server.
 - The generated registry contains literal static import paths, so Turbopack can discover every candidate at build time.
 - RSC rendering is the default. `iframe` defaults to `false`.
+- The generated `FlexLayoutNextSplitScreen` is the wrapper for URL-based RSC rendering and can also act as the persistence boundary for browser reload/history restoration.
 
 ### 1. Generate the registry
 
@@ -673,7 +706,7 @@ Generated files use generic exports:
 ```ts
 pageRegistry
 resolvePage
-FlexLayoutNextProvider
+FlexLayoutNextSplitScreen
 ```
 
 Main generator options:
@@ -685,24 +718,26 @@ Main generator options:
 - `includeLayouts`: compose ancestor `layout.tsx` modules. Defaults to `false`
 - `excludeRootLayout`: exclude `app/layout.tsx`. Defaults to `true`
 - `excludedLayouts`: extensionless layout paths relative to `appDir`
-- `providerId`: only needed when multiple generated providers share the same page tree
-- `cookieOptions`: `path`, `domain`, `secure`, `sameSite`, and `maxAge` for the Server Action render-request cookie
+- `providerId`: only needed when multiple generated wrappers share the same page tree
+- `cookieOptions`: `path`, `domain`, `httpOnly`, `secure`, `sameSite`, and `maxAge` for the Server Action render-request cookie
 
 `includeLayouts` is intentionally disabled by default. Root and upper layouts commonly contain headers, sidebars, providers, or the FlexLayout shell itself. Re-applying them inside a pane can duplicate the shell or create recursive UI. Enable it only when the required nested layouts are known and safe.
 
-### 2. Mount the generated Provider once
+The generated `FlexLayoutNextSplitScreen` accepts a `persistence` prop at usage time, so browser persistence does not need to be hardcoded into the generator configuration.
 
-`FlexLayoutNextProvider` is not required around every regular `FlexLayout`. Wrap the **`FlexLayoutSplitScreen` tree that will receive URL-based server-rendered panes** once. The DragBox may live elsewhere; the dropped pane only needs to render under this Provider.
+### 2. Mount the generated FlexLayoutNextSplitScreen
+
+`FlexLayoutNextSplitScreen` is not required around every regular `FlexLayout`. It is the Next.js-specific wrapper around the **`FlexLayoutSplitScreen` tree that receives URL-based server-rendered panes**.
 
 ```tsx
 // app/layout.tsx or a shared Server Layout that renders FlexLayoutSplitScreen
-import FlexLayoutNextProvider from "@/generated/flexLayoutPageRegistry";
+import FlexLayoutNextSplitScreen from "@/generated/flexLayoutPageRegistry";
 import { FlexLayoutSplitScreen } from "@byeolnaerim/flex-layout";
 import type { ReactNode } from "react";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
-		<FlexLayoutNextProvider>
+		<FlexLayoutNextSplitScreen>
 			<FlexLayoutSplitScreen
 				layoutName="root-split-screen"
 				containerName="main-split-screen"
@@ -710,14 +745,75 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 			>
 				{children}
 			</FlexLayoutSplitScreen>
-		</FlexLayoutNextProvider>
+		</FlexLayoutNextSplitScreen>
 	);
 }
 ```
 
-On drop, the Provider internally invokes a Server Action that records the requested URL in a short-lived HTTP-only cookie. The cookie mutation rerenders the current RSC tree, the generated registry resolves the URL, and the server-rendered `page.tsx` node is merged into the existing `FlexLayoutSplitScreen` pane.
+On drop, the wrapper internally invokes a Server Action that records the requested URL in a short-lived HTTP-only cookie. The cookie mutation rerenders the current RSC tree, the generated registry resolves the URL, and the server-rendered `page.tsx` node is merged into the existing `FlexLayoutSplitScreen` pane.
 
-### 3. Pass only the URL to the DragBox
+### 3. Restore Split Screen across reloads / browser URLs
+
+Pass `persistence` to serialize the restorable Next URL-pane split structure through `@byeolnaerim/global-rx-state` storage and restore it later.
+
+```tsx
+<FlexLayoutNextSplitScreen
+	persistence={{
+		storage: "auto",
+		restoreOnReload: true,
+		syncWithBrowserUrl: true,
+	}}
+>
+	<FlexLayoutSplitScreen
+		layoutName="root-split-screen"
+		containerName="main-split-screen"
+		navigationTitle="ROOT"
+	>
+		{children}
+	</FlexLayoutSplitScreen>
+</FlexLayoutNextSplitScreen>
+```
+
+`persistence` options:
+
+- `storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"` _(required)_: persistence backend. `"in-memory"` is intentionally unsupported
+- `keyName?: string`: global-rx-state persistence key. Defaults to `__flexLayoutNextSplitScreen:${providerId}`
+- `name?: string`, `storeName?: string`, `keyPrefix?: string`: storage-specific options
+- `restoreOnReload?: boolean`: restore after a full reload. Defaults to `true`. When `false`, Split Screen persistence for this wrapper is disabled
+- `syncWithBrowserUrl?: boolean`: keep a separate snapshot for each browser URL. Defaults to `false`
+
+A pane is restorable only when all of the following are true:
+
+- it belongs to a `FlexLayoutSplitScreen` registered under the `FlexLayoutNextSplitScreen` wrapper
+- it was created with the Next-specific `FlexLayoutSplitScreenDragBox`
+- `url` is provided
+- no explicit `targetComponent` is provided
+- `iframe !== true`
+- `persistence` is enabled
+
+Persistent snapshots do not store ReactElements, functions, refs, or other runtime objects. They store only restorable data such as split topology/order/direction, `screenKey`, `containerName`, `navigationTitle`, URL, and document-outside options.
+
+Panes with an explicit `targetComponent` and iframe panes still work normally at runtime, including split and move operations, but they are omitted from persistent snapshots. They therefore disappear after a reload or URL-snapshot restore. If a restorable URL pane was structurally nested under one of those non-restorable panes, it is promoted to a root center tab when possible instead of being discarded.
+
+The root ReactElement itself is also not persisted. During restore, the wrapper uses the **current route's root `children`** and reconnects it to the persisted root `screenKey` and split topology.
+
+#### `syncWithBrowserUrl: false`
+
+A single latest workspace snapshot is kept.
+
+- route changes keep the current split workspace
+- a full reload restores the most recently saved URL-backed split workspace
+
+#### `syncWithBrowserUrl: true`
+
+Snapshots are keyed by `pathname + search`.
+
+- navigating or using back/forward to a URL with an existing snapshot restores that URL's complete URL-backed split workspace
+- the first visit to a URL without a snapshot inherits the current workspace and saves it as that URL's initial snapshot
+- the hash is not part of the snapshot key
+- repeated entries for the same URL in browser history use the **latest snapshot for that URL**, not per-history-entry state
+
+### 4. Pass only the URL to the DragBox
 
 Import `FlexLayoutSplitScreenDragBox` from the Next.js entry.
 
@@ -745,9 +841,9 @@ export function MenuItem({ url, title }: { url: string; title: string }) {
 }
 ```
 
-An explicitly supplied `targetComponent` takes precedence over automatic URL rendering.
+An explicitly supplied `targetComponent` takes precedence over automatic URL rendering. Such a pane still participates in the runtime split tree but is excluded from persistence restoration.
 
-### 4. iframe rendering
+### 5. iframe rendering
 
 An iframe is used only when `iframe` is explicitly set to `true`. The default is `false`.
 
@@ -767,7 +863,7 @@ An iframe is used only when `iframe` is explicitly set to `true`. The default is
 </FlexLayoutSplitScreenDragBox>
 ```
 
-The iframe automatically disables pointer events while a FlexLayout drag or resize operation is active. Standard iframe attributes and styles can be overridden through `iframeProps`. Iframe mode does not use RSC server rendering, so `FlexLayoutNextProvider` is not required for that pane.
+The iframe automatically disables pointer events while a FlexLayout drag or resize operation is active. Standard iframe attributes and styles can be overridden through `iframeProps`. Iframe mode does not use RSC server rendering or Split Screen persistence restoration, so that pane itself does not require the `FlexLayoutNextSplitScreen` wrapper.
 
 ### Scope and limitations
 
@@ -778,8 +874,8 @@ The iframe automatically disables pointer events while a FlexLayout drag or resi
 - `redirect()` and `notFound()` inside an imported page can affect the containing Next route rather than only the pane.
 - `loading.tsx`, `error.tsx`, `not-found.tsx`, and metadata are not automatically composed by the registry.
 - Route segment configuration such as `dynamic`, `revalidate`, `runtime`, and `preferredRegion` is not applied independently to a pane; the containing route controls runtime and caching.
-- Because the Provider reads `cookies()`, the route tree containing it becomes dynamically rendered.
-- Server Actions require a server and do not work with `output: "export"`. Use `iframe` or an explicit `targetComponent` for static exports.
+- Because `FlexLayoutNextSplitScreen` reads `cookies()`, the route tree containing the wrapper becomes dynamically rendered.
+- Server Actions require a server, so URL-based RSC rendering does not work with `output: "export"`. Use `iframe` or an explicit `targetComponent` for static exports.
 
 ---
 
