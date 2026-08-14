@@ -194,9 +194,12 @@ export default function FlexLayoutDynamicHeight({
 				const nextH = Math.max(0, Math.ceil(appliedH));
 				const nextMinH = Math.max(0, Math.ceil(minHForHeight));
 
-				const sameH = Math.abs(nextH - lastAppliedRef.current) < 1;
+				const sameH =
+					lastAppliedRef.current >= 0 &&
+					Math.abs(nextH - lastAppliedRef.current) <= 1;
 				const sameMinH =
-					Math.abs(nextMinH - lastAppliedMinRef.current) < 1;
+					lastAppliedMinRef.current >= 0 &&
+					Math.abs(nextMinH - lastAppliedMinRef.current) <= 1;
 
 				if (sameH && sameMinH) {
 					// 측정 때문에 건드린 걸 원복
@@ -262,8 +265,18 @@ export default function FlexLayoutDynamicHeight({
 				if (suppressRO) return;
 				subscriber.next();
 			});
+
 			ro.observe(target);
-			if (target.firstElementChild) ro.observe(target.firstElementChild);
+
+			let firstEl = target.firstElementChild as HTMLElement | null;
+			while (
+				firstEl &&
+				firstEl.dataset.flexLayoutDynamicHeightAnchor === "true"
+			) {
+				firstEl = firstEl.nextElementSibling as HTMLElement | null;
+			}
+			if (firstEl) ro.observe(firstEl);
+
 			return () => ro.disconnect();
 		});
 
