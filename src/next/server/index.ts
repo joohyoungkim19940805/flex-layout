@@ -1,11 +1,16 @@
-export { createFlexLayoutNextSplitScreen } from "./FlexLayoutNextSplitScreen";
-export type { CreateFlexLayoutNextSplitScreenOptions } from "./FlexLayoutNextSplitScreen";
-
-export { resolvePageFromRegistry } from "./pageRegistry";
+export {
+	createFlexLayoutNextSplitScreen,
+	FlexLayoutNextSplitScreen,
+} from "./FlexLayoutNextSplitScreen";
+export type {
+	CreateFlexLayoutNextSplitScreenOptions,
+	FlexLayoutNextSplitScreenProps,
+} from "./FlexLayoutNextSplitScreen";
+export {
+	resolvePageFromRegistry,
+} from "./pageRegistry";
 export type { ResolveFlexLayoutNextPageOptions } from "./pageRegistry";
-
 export { renderResolvedPage } from "./renderResolvedPage";
-
 export type {
 	FlexLayoutNextCookieOptions,
 	FlexLayoutNextPageImporter,
