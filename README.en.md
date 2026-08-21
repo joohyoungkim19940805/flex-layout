@@ -776,7 +776,7 @@ Pass `persistence` to serialize the restorable Next URL-pane split structure thr
 
 `persistence` options:
 
-- `storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"` _(required)_: persistence backend. `"in-memory"` is intentionally unsupported
+- `storage: "auto" | "indexeddb" | "IndexedDB" | "websql" | "WebSQL" | "localstorage" | "localStorage" | "sessionstorage" | "sessionStorage"` _(required)_: persistence backend. `"in-memory"` is intentionally unsupported
 - `keyName?: string`: global-rx-state persistence key. Defaults to `__flexLayoutNextSplitScreen:${providerId}`
 - `name?: string`, `storeName?: string`, `keyPrefix?: string`: storage-specific options
 - `restoreOnReload?: boolean`: restore after a full reload. Defaults to `true`. When `false`, Split Screen persistence for this wrapper is disabled

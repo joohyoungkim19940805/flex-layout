@@ -774,7 +774,7 @@ wrapper는 드롭 시 전달된 URL을 짧은 수명의 HTTP-only cookie에 기�
 
 `persistence` 옵션:
 
-- `storage: "auto" | "indexeddb" | "websql" | "localstorage" | "sessionstorage"` _(필수)_: persistence backend. `"in-memory"`는 지원하지 않음
+- `storage: "auto" | "indexeddb" | "IndexedDB" | "websql" | "WebSQL" | "localstorage" | "localStorage" | "sessionstorage" | "sessionStorage"` _(필수)_: persistence backend. `"in-memory"`는 지원하지 않음
 - `keyName?: string`: global-rx-state persistence key. 기본값은 `__flexLayoutNextSplitScreen:${providerId}`
 - `name?: string`, `storeName?: string`, `keyPrefix?: string`: storage 세부 옵션
 - `restoreOnReload?: boolean`: reload 후 복원 여부. 기본값 `true`. `false`이면 해당 wrapper의 Split Screen persistence 자체가 비활성화됨
